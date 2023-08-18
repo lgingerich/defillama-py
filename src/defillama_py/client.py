@@ -68,7 +68,8 @@ class Llama:
 
 
     def _tstamp_to_dtime(self, df):
-        df['date'].cast(pl.Datetime).dt.with_time_unit('ns')
+        
+        df['date'].cast(pl.Datetime).dt.with_time_unit('s')
         return df
     
 
