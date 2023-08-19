@@ -25,9 +25,9 @@ setup(
     install_requires=[
         # Add project dependencies
         "requests>=2.31.0",
-        "polars>=0.18.15",
-    ],
-    extras_require={
+        "pandas>=2.0.3",
+    ],   
+    extras_ruire={
         "dev": [
             # Add development dependencies
             "pytest>=7.4.0",
