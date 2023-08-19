@@ -7,7 +7,10 @@ from typing import Union, List, Dict
 # add functionality for large scale data extraction (i.e. get historical tvl of all dapps across all chains)
 # packaged transformations should return only critical data (no metadata). for a tvl endpoint, only return tvl
 # handle potential rate limiting: 500 requests / min
-# add method to get protocol slugs?
+# add method to get proper slugs/ids
+    # get_protocol_slug
+    # get_stablecoin_id
+# check is instance and type check matching
 
 # general ordering of methods per category:
 # ------ small to big ------
@@ -94,6 +97,85 @@ class Llama:
         return df
 
     
+    # --- Mappings --- #
+    """
+    Helper functions to get full lists of all chains, protocols, stablecoins, and pools tracked by DefiLlama.
+    Used to map general names with unique identifiers such as chain IDs and protocol slugs.
+    Returns minimum information necessary to uniquely identify objects.
+    Bridges, DEXs, etc. can be fetched from the list of protocols, therefore, they do not have their own mapping function.
+    """
+    
+    def get_chains(self):
+        """
+        Retrieve a list of all chains with their chain ID and name
+        """
+        results = []
+
+        response = self._get('TVL', endpoint=f'/v2/chains')
+        
+        for asset in response:
+            results.append({
+                "chain_id": asset["chainId"],
+                "name": asset["name"]
+            })
+
+        return results
+        
+    
+    def get_protocols(self):
+        """
+        Retrieve a list of all protocols with their ID, name, and slug
+        """
+        results = []
+
+        response = self._get('TVL', endpoint=f'/protocols')
+        
+        for asset in response:
+            results.append({
+                "id": asset["id"],
+                "name": asset["name"],
+                "slug": asset["slug"]
+            })
+
+        return results
+
+
+    def get_stablecoins(self):
+        """
+        Retrieve a list of all stablecoins with their id, name, and symbol
+        """
+        results = []
+
+        response = self._get('STABLECOINS', endpoint=f'/stablecoins')
+        
+        for asset in response['peggedAssets']:
+            results.append({
+                "id": asset["id"],
+                "name": asset["name"],
+                "symbol": asset["symbol"]
+            })
+
+        return results
+   
+   
+    def get_pools(self):
+        """
+        Retrieve a list of all pools with their chain, project, symbol, and pool id
+        """
+        results = []
+
+        response = self._get('YIELDS', endpoint=f'/pools')
+        
+        for asset in response['data']:
+            results.append({
+                "id": asset["pool"],
+                "chain": asset["chain"],
+                "project": asset["project"],
+                "symbol": asset["symbol"]
+            })
+
+        return results   
+
 
     # --- TVL --- #
 
@@ -263,26 +345,65 @@ class Llama:
 
 
     # --- Coins --- #
+    
+    # /prices/current/{coins}
+    # /prices/historical/{timestamp}/{coins}
+    # /batchHistorical
+    # /chart/{coins}
+    # /percentage/{coins}
+    # /prices/first/{coins}
+    # /block/{chain}/{timestamp}
 
 
     # --- Stablecoins --- #
 
+    # /stablecoins                  
+    # /stablecoincharts/all         def get_total_historical_stablecoin_mcap()
+    # /stablecoincharts/{chain}     def get_chain_historical_stablecoin_mcap()
+    # /stablecoin/{asset}           def get_historical_stablecoin_distribution()
+    # /stablecoinchains             def get_all_chains_current_stablecoin_mcap()
+    # /stablecoinprices             def get_historical_stablecoin_price()
+
 
     # --- Yields --- #
 
+    # /pools
+    # /chart/{pool}
+
 
     # --- ABI Decoder --- #
+    
+    # /fetch/signature
+    # /fetch/contract/{chain}/{address}
 
 
     # --- Bridges --- #
+    
+    # /bridges
+    # /bridges/{id}
+    # /bridgevolume/{chain}
+    # /bridgedaystats/{timestamp}/{chain}
+    # /transactions/{id}
 
 
     # --- Volumes --- #
+    
+    # /overview/dexs
+    # /overview/dexs/{chain}
+    # /summary/dexs/{protocol}
+    # /overview/derivatives
+    # /overview/derivatives{chain}
+    # /summary/derivatives/{protocol}
+    # /overview/options
+    # /overview/options/{chain}
+    # /summary/options/{protocol}
 
 
     # --- Fees --- #
 
-
+    # /overview/fees
+    # /overview/fees/{chain}
+    # /summary/fees/{protocol}
 
 
 
