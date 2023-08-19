@@ -1,15 +1,13 @@
 import requests
 import pandas as pd
-from typing import Dict
+from typing import Union, List, Dict
 
 # TO DO:
 
-# add better method to get chain, protocol, and token slugs
 # add functionality for large scale data extraction (i.e. get historical tvl of all dapps across all chains)
-
-# maybe include a param like "resp_fmt" where someone can specify if they want all raw output or filtered for only critical data?
-# how do I handle wanting to have ready-to-go transformations and needing to keep abstractions minimal?
-# everything that a user can get directly calling the API endpoints they should be able to get in this wrapper
+# packaged transformations should return only critical data (no metadata). for a tvl endpoint, only return tvl
+# handle potential rate limiting: 500 requests / min
+# add method to get protocol slugs?
 
 # general ordering of methods per category:
 # ------ small to big ------
@@ -62,6 +60,7 @@ class Llama:
         
         try:
             response = self.session.request('GET', url, timeout=30)
+            print(f"Calling API endpoint: {url}")
             response.raise_for_status()
         except requests.Timeout:
             raise TimeoutError(f"Request to '{url}' timed out.")
@@ -74,7 +73,7 @@ class Llama:
             raise ValueError(f"Invalid JSON response received from '{url}'.")
 
 
-    def _tstamp_to_dtime(self, df):
+    def _tstamp_to_dtime(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Convert timestamp column to datetime in a DataFrame.
         """
@@ -82,50 +81,185 @@ class Llama:
         
         return df
     
+        
+    def _clean_chain_name(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Takes a DataFrame, and for the "chain" column:
+        - Converts the names to lowercase
+        - Replaces spaces, hyphens, and dashes with underscores
+        """
+        if 'chain' in df.columns:
+            df['chain'] = df['chain'].str.lower().str.replace('[-\s]', '_', regex=True)
+        
+        return df
+
+    
 
     # --- TVL --- #
 
-    def get_protocol_current_tvl(self, protocol:str) -> float:
+    def get_protocol_current_tvl(self, protocols: List[str]) -> Union[float, Dict[str, float]]:
         """
-        Simplified endpoint to get current TVL of a protocol
+        Endpoint to get current TVL of one or multiple protocols.
+        
+        :param protocols: List of protocol names.
+        :return: TVL value as float if a single protocol is provided; otherwise, a dictionary with protocol names as keys and their TVL as values.
         """
-        return self._get('TVL', endpoint=f'/tvl/{protocol}')
+        if len(protocols) == 1:
+            return self._get('TVL', endpoint=f'/tvl/{protocols[0]}')
 
+        results = {}
+        
+        for protocol in protocols:
+            data = self._get('TVL', endpoint=f'/tvl/{protocol}')
+            results[protocol] = float(data)
+            
+        return results
 
-    def get_all_protocols_current_tvl(self) -> pd.DataFrame:
-        """
-        List all protocols on defillama along with their tvl
-        """
-        return pd.DataFrame(self._get('TVL', endpoint='/protocols'))
-
-
-    # # fix this
-    # def get_protocol_historical_tvl(self, protocol: str) -> pd.DataFrame:
-    #     """
-    #     Get historical TVL of a protocol and breakdowns by token and chain
-    #     """
-    #     return pd.DataFrame(self._get('TVL', endpoint=f'/protocol/{protocol}'))
-
-
-    def get_chain_historical_tvl(self, chain: str) -> pd.DataFrame:
-        """
-        Get historical TVL (excludes liquid staking and double counted tvl) of a chain
-        """
-        return pd.DataFrame(self._get('TVL', endpoint=f'/v2/historicalChainTvl/{chain}'))
-
-
-    def get_all_chains_current_tvl(self) -> pd.DataFrame:
-        """
-        Get current TVL of all chains
-        """
-        return pd.DataFrame(self._get('TVL', endpoint=f'/v2/chains'))
     
+    def get_all_protocols_current_tvl(self, raw: bool) -> Union[List[Dict], pd.DataFrame]:
+        """
+        Calls the API to get protocol data and either returns the raw data or a transformed DataFrame.
+        
+        :param raw: Whether to return the raw data or a transformed DataFrame.
+        :return: Raw data or DataFrame.
+        """
+        if raw == True:
+            return self._get('TVL', endpoint='/protocols')
 
-    def get_all_chains_historical_tvl(self) -> pd.DataFrame:
+        elif raw == False:
+            results = []
+
+            # Iterate over each raw data entry
+            for raw_data in self._get('TVL', endpoint='/protocols'):
+                protocol = raw_data.get('slug')
+                chain_tvls = raw_data.get('chainTvls', {})
+
+                # Iterate over chainTvls to create denormalized rows
+                for chain, tvl in chain_tvls.items():
+                    results.append({
+                        'chain': chain,
+                        'protocol': protocol,
+                        'tvl': tvl
+                    })
+
+            df = pd.DataFrame(results)
+            return self._clean_chain_name(df)  
+    
+    
+    def get_protocol_historical_tvl(self, protocols: List[str], raw: bool) -> Union[Dict[str, Dict], pd.DataFrame]:
         """
-        Get historical TVL (excludes liquid staking and double counted tvl) of DeFi on all chains
+        Get historical TVL of a protocol and breakdowns by token and chain.
+
+        :param protocols: List of protocol names.
+        :param raw: Whether to return the raw data or a transformed DataFrame.
+        :return: Raw data or DataFrame.
         """
-        return pd.DataFrame(self._get('TVL', endpoint=f'/v2/historicalChainTvl'))
+        if isinstance(protocols, str):
+            protocols = [protocols]
+        
+        if raw == True:
+            if len(protocols) == 1:
+                return self._get('TVL', endpoint=f'/protocol/{protocols[0]}')
+            
+            results = {}
+            for protocol in protocols:
+                results[protocol] = self._get('TVL', endpoint=f'/protocol/{protocol}')
+            return results
+
+        elif raw == False:
+            results = []
+
+            for protocol in protocols:
+                data = self._get('TVL', endpoint=f'/protocol/{protocol}')
+                chain_tvls = data.get("chainTvls", {})
+                
+                for chain, chain_data in chain_tvls.items():
+                    tvl_data = chain_data.get("tvl", [])
+                    
+                    for entry in tvl_data:
+                        results.append({
+                            'date': entry.get('date'),
+                            'chain': chain,
+                            'protocol': protocol,
+                            'tvl': entry.get('totalLiquidityUSD')
+                        })
+
+            df = pd.DataFrame(results)
+            return self._clean_chain_name(df)  
+        
+
+    def get_chain_historical_tvl(self, chains: Union[str, List[str]], raw: bool) -> Union[Dict[str, List[Dict]], pd.DataFrame]:
+        """
+        Get historical TVL (excludes liquid staking and double counted tvl) of a chain or chains.
+        
+        :param chains: Chain or list of chains for which to retrieve historical TVL.
+        :param raw: Whether to return the raw data or a transformed DataFrame.
+        :return: Raw data or DataFrame.
+        """
+        if raw == True:
+            if isinstance(chains, str):
+                return self._get('TVL', endpoint=f'/v2/historicalChainTvl/{chains}')
+            
+            results = {}
+            for chain in chains:
+                results[chain] = self._get('TVL', endpoint=f'/v2/historicalChainTvl/{chain}')
+            return results
+
+        elif raw == False:
+            if isinstance(chains, str):
+                chains = [chains]
+
+            # List to store individual rows
+            results = []
+
+            for chain in chains:
+                chain_data = self._get('TVL', endpoint=f'/v2/historicalChainTvl/{chain}')
+                for entry in chain_data:
+                    entry['chain'] = chain
+                    results.append(entry)
+
+            df = pd.DataFrame(results)
+            return self._clean_chain_name(df)
+
+
+    def get_all_chains_current_tvl(self, raw: bool) -> Union[List[Dict], pd.DataFrame]:
+        """
+        Get current TVL of all chains.
+
+        :param raw: Whether to return the raw data or a transformed DataFrame.
+        :return: Raw data or DataFrame.
+        """
+        response = self._get('TVL', endpoint=f'/v2/chains')
+
+        if raw == True:
+            return response
+
+        elif raw == False:
+            results = []
+
+            for entry in response:
+                results.append({
+                    'chain': entry.get('name'),
+                    'tvl': entry.get('tvl')
+                })
+
+            df = pd.DataFrame(results)
+            return self._clean_chain_name(df)
+
+
+    def get_all_chains_historical_tvl(self, raw: bool) -> Union[List[Dict], pd.DataFrame]:
+        """
+        Get historical TVL (excludes liquid staking and double counted tvl) of DeFi on all chains.
+
+        :param raw: Whether to return the raw data or a transformed DataFrame.
+        :return: Raw data or DataFrame.
+        """
+        if raw == True:
+            return self._get('TVL', endpoint=f'/v2/historicalChainTvl')
+
+        elif raw == False:
+            return pd.DataFrame(self._get('TVL', endpoint=f'/v2/historicalChainTvl'))
+
 
 
     # --- Coins --- #
