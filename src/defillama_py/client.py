@@ -1,11 +1,15 @@
 import requests
-import polars as pl
+import pandas as pd
+from typing import Dict
 
 # TO DO:
 
 # add better method to get chain, protocol, and token slugs
 # add functionality for large scale data extraction (i.e. get historical tvl of all dapps across all chains)
 
+# maybe include a param like "resp_fmt" where someone can specify if they want all raw output or filtered for only critical data?
+# how do I handle wanting to have ready-to-go transformations and needing to keep abstractions minimal?
+# everything that a user can get directly calling the API endpoints they should be able to get in this wrapper
 
 # general ordering of methods per category:
 # ------ small to big ------
@@ -14,26 +18,29 @@ import polars as pl
 
 
 
-TVL_URL = VOLUMES_URL = FEES_URL = 'https://api.llama.fi/'
-COINS_URL = 'https://coins.llama.fi/'
-STABLECOINS_URL = 'https://stablecoins.llama.fi/'
-YIELDS_URL='https://yields.llama.fi/'
-ABI_URL='https://abi-decoder.llama.fi/'
-BRIDGES_URL='https://bridges.llama.fi/'
+TVL_URL = VOLUMES_URL = FEES_URL = 'https://api.llama.fi'
+COINS_URL = 'https://coins.llama.fi'
+STABLECOINS_URL = 'https://stablecoins.llama.fi'
+YIELDS_URL='https://yields.llama.fi'
+ABI_URL='https://abi-decoder.llama.fi'
+BRIDGES_URL='https://bridges.llama.fi'
 
 
 class Llama:
 
-    # --- Helpers --- #
+    # --- Initialization and Helpers --- #
 
     def __init__(self):
         """
-        Initialize the object
+        Initialize the Llama object with a new session for making HTTP requests.
         """
         self.session = requests.Session()
 
 
-    def _get(self, api_tag, endpoint, params=None):
+    def _get(self, api_tag: str, endpoint: str, params: Dict = None):
+        """
+        Internal helper to make GET requests.
+        """
         if api_tag == 'TVL':
             url = TVL_URL + endpoint
         elif api_tag == 'COINS':
@@ -68,49 +75,57 @@ class Llama:
 
 
     def _tstamp_to_dtime(self, df):
+        """
+        Convert timestamp column to datetime in a DataFrame.
+        """
+        df['date'] = pd.to_datetime(df['date'], unit='s', utc=True)
         
-        df['date'].cast(pl.Datetime).dt.with_time_unit('s')
         return df
     
 
     # --- TVL --- #
 
-    def get_protocol_current_tvl():
-        # /tvl/{protocol}
-        # Simplified endpoint to get current TVL of a protocol
-        # 'https://api.llama.fi/tvl/{protocol}'
+    def get_protocol_current_tvl(self, protocol:str) -> float:
+        """
+        Simplified endpoint to get current TVL of a protocol
+        """
+        return self._get('TVL', endpoint=f'/tvl/{protocol}')
 
 
-    def get_all_protocols_current_tvl():
-        # /protocols
-        # List all protocols on defillama along with their tvl
-        # 'https://api.llama.fi/protocols'
-        # endpoint = f"{TVL_URL}/protocols"
+    def get_all_protocols_current_tvl(self) -> pd.DataFrame:
+        """
+        List all protocols on defillama along with their tvl
+        """
+        return pd.DataFrame(self._get('TVL', endpoint='/protocols'))
 
 
-    def get_protocol_historical_tvl():
-        # /protocol/{protocol}
-        # Get historical TVL of a protocol and breakdowns by token and chain
-        # 'https://api.llama.fi/protocol/{protocol}'
-        # endpoint = f"{TVL_URL}/protocol/{protocol}"
+    # # fix this
+    # def get_protocol_historical_tvl(self, protocol: str) -> pd.DataFrame:
+    #     """
+    #     Get historical TVL of a protocol and breakdowns by token and chain
+    #     """
+    #     return pd.DataFrame(self._get('TVL', endpoint=f'/protocol/{protocol}'))
 
 
-    def get_chain_historical_tvl():
-        # /v2/historicalChainTvl/{chain}
-        # Get historical TVL (excludes liquid staking and double counted tvl) of a chain
-        # 'https://api.llama.fi/v2/historicalChainTvl/{chain}'
+    def get_chain_historical_tvl(self, chain: str) -> pd.DataFrame:
+        """
+        Get historical TVL (excludes liquid staking and double counted tvl) of a chain
+        """
+        return pd.DataFrame(self._get('TVL', endpoint=f'/v2/historicalChainTvl/{chain}'))
 
 
-    def get_all_chains_current_tvl():
-        # /v2/chains
-        # 'https://api.llama.fi/v2/chains'
-        # Get current TVL of all chains
+    def get_all_chains_current_tvl(self) -> pd.DataFrame:
+        """
+        Get current TVL of all chains
+        """
+        return pd.DataFrame(self._get('TVL', endpoint=f'/v2/chains'))
+    
 
-
-    def get_all_chains_historical_tvl():
-        # /v2/historicalChainTvl
-        # Get historical TVL (excludes liquid staking and double counted tvl) of DeFi on all chains
-        # 'https://api.llama.fi/v2/historicalChainTvl'
+    def get_all_chains_historical_tvl(self) -> pd.DataFrame:
+        """
+        Get historical TVL (excludes liquid staking and double counted tvl) of DeFi on all chains
+        """
+        return pd.DataFrame(self._get('TVL', endpoint=f'/v2/historicalChainTvl'))
 
 
     # --- Coins --- #
@@ -166,96 +181,34 @@ class Llama:
 #           schema:
 #             type: string
 #             example: 4h
-#       responses:
-#         '200':
-#           description: successful operation
-#           content:
-#             'application/json':
-#               schema:
-#                 type: object
-#                 properties:
-#                   coins:
-#                     type: object
-#                     properties:
-#                       'ethereum:0xdF574c24545E5FfEcb9a659c229253D4111d87e1':
-#                         type: object
-#                         properties:
-#                           decimals:
-#                             type: number
-#                             example: 8
-#                           price:
-#                             type: number
-#                             example: 0.022053735051098835
-#                           'symbol':
-#                             type: string
-#                             example: 'cDAI'
-#                           'timestamp':
-#                             type: number
-#                             example: 0.99
-#         '502':
-#           description: Internal error
+
+
+
 #   /prices/historical/{timestamp}/{coins}:
-#     get:
-#       tags:
-#         - coins
 #       summary: Get historical prices of tokens by contract address
 #       description: See /prices/current for explanation on how prices are sourced.
 #       servers:
 #         - url: https://coins.llama.fi
 #       parameters:
 #         - name: coins
-#           in: path
-#           required: true
 #           description: set of comma-separated tokens defined as {chain}:{address}
 #           schema:
 #             type: string
 #             example: ethereum:0xdF574c24545E5FfEcb9a659c229253D4111d87e1,coingecko:ethereum,bsc:0x762539b45a1dcce3d36d080f74d1aed37844b878,ethereum:0xdB25f211AB05b1c97D595516F45794528a807ad8
 #         - name: timestamp
-#           in: path
-#           required: true
 #           description: UNIX timestamp of time when you want historical prices
 #           schema:
 #             type: number
 #             example: 1648680149
 #         - name: searchWidth
-#           in: query
-#           required: false
 #           description: time range on either side to find price data, defaults to 6 hours
 #           schema:
 #             type: string
 #             example: 4h
-#       responses:
-#         '200':
-#           description: successful operation
-#           content:
-#             'application/json':
-#               schema:
-#                 type: object
-#                 properties:
-#                   coins:
-#                     type: object
-#                     properties:
-#                       'ethereum:0xdF574c24545E5FfEcb9a659c229253D4111d87e1':
-#                         type: object
-#                         properties:
-#                           decimals:
-#                             type: number
-#                             example: 8
-#                           price:
-#                             type: number
-#                             example: 0.022053735051098835
-#                           'symbol':
-#                             type: string
-#                             example: 'cDAI'
-#                           'timestamp':
-#                             type: number
-#                             example: 1648680149
-#         '502':
-#           description: Internal error
+
+
+
 #   /batchHistorical:
-#     get:
-#       tags:
-#         - coins
 #       summary: Get historical prices for multiple tokens at multiple different timestamps
 #       description: |
 #         Strings accepted by period and searchWidth:
