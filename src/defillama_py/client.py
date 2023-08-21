@@ -7,10 +7,9 @@ from typing import Union, List, Dict
 # add functionality for large scale data extraction (i.e. get historical tvl of all dapps across all chains)
 # packaged transformations should return only critical data (no metadata). for a tvl endpoint, only return tvl
 # handle potential rate limiting: 500 requests / min
-# add method to get proper slugs/ids
-    # get_protocol_slug
-    # get_stablecoin_id
+# check that function inputs (chains, protocols, coins, etc.) exist
 # check is instance and type check matching
+# urllib for proper string encoding?
 
 # general ordering of methods per category:
 # ------ small to big ------
@@ -75,15 +74,6 @@ class Llama:
         except ValueError:
             raise ValueError(f"Invalid JSON response received from '{url}'.")
 
-
-    def _tstamp_to_dtime(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Convert timestamp column to datetime in a DataFrame.
-        """
-        df['date'] = pd.to_datetime(df['date'], unit='s', utc=True)
-        
-        return df
-    
         
     def _clean_chain_name(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -291,7 +281,6 @@ class Llama:
             if isinstance(chains, str):
                 chains = [chains]
 
-            # List to store individual rows
             results = []
 
             for chain in chains:
@@ -388,16 +377,107 @@ class Llama:
 
     # --- Volumes --- #
     
+    # def get_dex_volume(self, raw: bool, params):
+    # """
     # /overview/dexs
-    # /overview/dexs/{chain}
-    # /summary/dexs/{protocol}
-    # /overview/derivatives
-    # /overview/derivatives{chain}
-    # /summary/derivatives/{protocol}
-    # /overview/options
-    # /overview/options/{chain}
-    # /summary/options/{protocol}
+    
+    
+    # excludeTotalDataChart - returns timestamp + volume for all chains and dex's
+    # excludeTotalDataChartBreakdown - returns timestamp + volume for all dapps and all chains (not broken down by chain)
+    # dataType - dailyVolume or totalVolume
+    # """
 
+
+    # def get_chain_dex_volume(self, raw: bool, params):
+    # """
+    # /overview/dexs/{chain}
+    
+
+    # excludeTotalDataChart - returns timestamp + volume for specified chain(s) and dex's
+    # excludeTotalDataChartBreakdown - returns timestamp + volume for all dapps and all chains (not broken down by chain)
+    # dataType - dailyVolume or totalVolume  
+    # """
+    
+    
+    # def get_protocol_dex_volume(self, raw: bool, params):
+    # """
+    # /summary/dexs/{protocol}
+    
+
+    # excludeTotalDataChart - returns timestamp + volume for specified  dex(s)
+    # excludeTotalDataChartBreakdown - returns timestamp + volume for all dapps and all chains (not broken down by chain)
+    # dataType - dailyVolume or totalVolume  
+    # """    
+    
+
+    # def get_perps_volume(self, raw: bool, params):
+    # """
+    # /overview/derivatives
+    
+    
+    # excludeTotalDataChart - returns timestamp + volume for all chains and derivatives protocols
+    # excludeTotalDataChartBreakdown - returns timestamp + volume for all dapps and all chains (not broken down by chain)
+    # dataType - dailyVolume or totalVolume
+    # """
+
+
+    # def get_chain_perps_volume(self, raw: bool, params):
+    # """
+    # /overview/derivatives/{chain}
+    
+
+    # excludeTotalDataChart - returns timestamp + volume for specified chain(s) and derivatives protocols
+    # excludeTotalDataChartBreakdown - returns timestamp + volume for all dapps and all chains (not broken down by chain)
+    # dataType - dailyVolume or totalVolume  
+    # """
+    
+    
+    # def get_protocol_perps_volume(self, raw: bool, params):
+    # """
+    # /summary/derivatives/{protocol}
+    
+
+    # excludeTotalDataChart - returns timestamp + volume for specified  derivatives protocols
+    # excludeTotalDataChartBreakdown - returns timestamp + volume for all dapps and all chains (not broken down by chain)
+    # dataType - dailyVolume or totalVolume  
+    # """        
+    
+
+    # def get_options_volume(self, raw: bool, params):
+    # """
+    # /overview/options
+    
+    
+    # excludeTotalDataChart - returns timestamp + volume for all chains and options protocols
+    # excludeTotalDataChartBreakdown - returns timestamp + volume for all dapps and all chains (not broken down by chain)
+    # dataType - dailyVolume or totalVolume
+    # """
+
+
+    # def get_chain_options_volume(self, raw: bool, params):
+    # """
+    # /overview/options/{chain}
+    
+
+    # excludeTotalDataChart - returns timestamp + volume for specified chain(s) and options protocols
+    # excludeTotalDataChartBreakdown - returns timestamp + volume for all dapps and all chains (not broken down by chain)
+    # dataType - dailyVolume or totalVolume  
+    # """
+    
+    
+    # def get_protocol_options_volume(self, raw: bool, params):
+    # """
+    # /summary/options/{protocol}
+    
+
+    # excludeTotalDataChart - returns timestamp + volume for specified options protocols
+    # excludeTotalDataChartBreakdown - returns timestamp + volume for all dapps and all chains (not broken down by chain)
+    # dataType - dailyVolume or totalVolume  
+    # """     
+    
+    
+    
+    
 
     # --- Fees --- #
 
