@@ -6,7 +6,7 @@ obj = Llama()
 # df = obj.get_chains()
 # df = obj.get_protocols()
 # df = obj.get_stablecoins()
-# df = obj.get_pools()
+df = obj.get_pools()
 
 # df = obj.get_protocol_current_tvl(['velodrome'])
 # df = obj.get_all_protocols_current_tvl(raw=False)
@@ -57,6 +57,15 @@ obj = Llama()
 # })
 
 
+# df = obj.get_protocol_dex_volume(protocols='aave', raw=True, params = {
+#     "excludeTotalDataChart": False,
+#     "excludeTotalDataChartBreakdown": True,
+#     "dataType": "dailyVolume"
+# })
+
+
+# df = obj.get_bridges(params={"includeChains": False}, raw=False)
+df = obj.get_bridge_transactions(id)
 
 print(df)
 # print(str(df)[:1000])
