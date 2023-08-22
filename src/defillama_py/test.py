@@ -26,10 +26,39 @@ obj = Llama()
 
 # df = obj.get_all_chains_historical_tvl()
 
+# df = obj.get_dex_volume(raw=False, params = {
+#     "excludeTotalDataChart": True,
+#     "excludeTotalDataChartBreakdown": False,
+#     "dataType": "dailyVolume"
+# })
 
+# df = obj.get_perps_volume(raw=False, params = {
+#     "excludeTotalDataChart": True,
+#     "excludeTotalDataChartBreakdown": False,
+#     "dataType": "dailyVolume"
+# })
 
+# df = obj.get_options_volume(raw=False, params = {
+#     "excludeTotalDataChart": True,
+#     "excludeTotalDataChartBreakdown": False,
+#     "dataType": "dailyVolume"
+# })
+
+# df = obj.get_chain_dex_volume(chains=['arbitrum', 'optimism'], raw=False, params = {
+#     "excludeTotalDataChart": False,
+#     "excludeTotalDataChartBreakdown": True,
+#     "dataType": "dailyVolume"
+# })
+
+# df = obj.get_chain_dex_volume(chains=['arbitrum', 'optimism'], raw=False, params = {
+#     "excludeTotalDataChart": True,
+#     "excludeTotalDataChartBreakdown": False,
+#     "dataType": "dailyVolume"
+# })
 
 
 
 print(df)
+# print(str(df)[:1000])
 # df.to_csv('test.csv')
+
