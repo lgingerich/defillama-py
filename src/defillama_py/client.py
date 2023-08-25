@@ -52,25 +52,28 @@ class Llama:
         """
         Internal helper to make GET requests.
         """
-        if api_tag == 'TVL':
-            url = TVL_URL + endpoint
-        elif api_tag == 'COINS':
-            url = COINS_URL + endpoint  
-        elif api_tag == 'STABLECOINS':    
-            url = STABLECOINS_URL + endpoint
-        elif api_tag == 'YIELDS':
-            url = YIELDS_URL + endpoint 
-        elif api_tag == 'ABI':
-            url = ABI_URL + endpoint
-        elif api_tag == 'BRIDGES':
-            url = BRIDGES_URL + endpoint
-        elif api_tag == 'VOLUMES':
-            url = VOLUMES_URL + endpoint
-        elif api_tag == 'FEES':
-            url = FEES_URL + endpoint
-        else:
+        BASE_URLS = {
+            'TVL': TVL_URL,
+            'COINS': COINS_URL,
+            'STABLECOINS': STABLECOINS_URL,
+            'YIELDS': YIELDS_URL,
+            'ABI': ABI_URL,
+            'BRIDGES': BRIDGES_URL,
+            'VOLUMES': VOLUMES_URL,
+            'FEES': FEES_URL
+        }
+
+        base_url = BASE_URLS.get(api_tag)
+        if not base_url:
             raise ValueError(f"'{api_tag}' is not a valid API tag.")
         
+        url = base_url + endpoint
+
+        # Handle URL encoding for parameters
+        if params:
+            query_string = urlencode(params)
+            url += f"?{query_string}"
+            
         try:
             response = self.session.request('GET', url, timeout=30)
             print(f"Calling API endpoint: {url}")
@@ -879,12 +882,8 @@ class Llama:
         """
         if isinstance(chains, str):
             chains = [chains]
-        elif not isinstance(chains, list):
-            raise ValueError("chains must be either a string or a list of strings.")
-        
-        if not params:
-            raise ValueError("params dictionary is missing.")
-        
+            
+
         # Create the endpoint URL
         query_string = urlencode(params)
 
