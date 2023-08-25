@@ -8,23 +8,18 @@ obj = Llama()
 # df = obj.get_stablecoins()
 # df = obj.get_pools()
 
-# df = obj.get_protocol_current_tvl(['velodrome'])
 # df = obj.get_all_protocols_current_tvl(raw=False)
+# df = obj.get_protocol_historical_tvl(protocols='velodrome', raw=False)
+# df = obj.get_all_chains_historical_tvl(raw=False)
+# df = obj.get_protocol_current_tvl(['velodrome'])
 
-# df = obj.get_protocol_historical_tvl('satori-finance', raw=True)
-# df = obj.get_protocol_historical_tvl(['satori-finance','velodrome'], raw=True)
-# df = obj.get_protocol_historical_tvl(['satori-finance'], raw=False)
-# df = obj.get_protocol_historical_tvl(['satori-finance','velodrome'], raw=False)
+df = obj.get_protocol_current_tvl(['velodrome', 'aave'], raw=False)
+# df = obj.get_protocol_current_tvl(['velodrome', 'aave'])
 
-# df = obj.get_chain_historical_tvl('arbitrum', raw=True)
-# df = obj.get_chain_historical_tvl(['arbitrum', 'zkSync Era'], raw=True)
-# df = obj.get_chain_historical_tvl('arbitrum', raw=False)
-# df = obj.get_chain_historical_tvl(['arbitrum', 'zkSync Era'], raw=False)
+# df = obj.get_chain_historical_tvl(['arbitrum', 'ethereum'], raw=False)
 
-# df = obj.get_all_chains_current_tvl(raw=True)
-# df = obj.get_all_chains_current_tvl(raw=False)
+# get_protocol_current_tvl
 
-# df = obj.get_all_chains_historical_tvl()
 
 # df = obj.get_dex_volume(raw=False, params = {
 #     "excludeTotalDataChart": True,
@@ -67,7 +62,7 @@ obj = Llama()
 # df = obj.get_bridges(params={"includeChains": False}, raw=False)
 # df = obj.get_bridge_transactions(id)
 
-df = obj.get_summary_protocol_fees_revenue(protocols='aave')
+# df = obj.get_summary_protocol_fees_revenue(protocols='aave')
 
 # print(df)
 print(str(df)[:1000])

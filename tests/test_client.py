@@ -2,8 +2,8 @@ import pytest
 import pandas as pd
 from defillama_py.client import Llama
 
-# # create a DefiLlama instance
-# obj = Llama()
+# create a DefiLlama instance
+obj = Llama()
 
 # Global test parameters
 RAW_VALUES = [True, False]
@@ -26,6 +26,28 @@ VOLUME_PARAMS = [
     {"excludeTotalDataChart": False, "excludeTotalDataChartBreakdown": False, "dataType": "totalVolume"},
     {"excludeTotalDataChart": False, "excludeTotalDataChartBreakdown": True, "dataType": "totalVolume"},
 ]
+
+
+# @pytest.mark.parametrize("raw", RAW_VALUES)
+# def test_get_all_protocols_current_tvl(raw):
+#     response = obj.get_all_protocols_current_tvl(raw)
+
+#     # If raw is True, the response should be a list of dictionaries
+#     if raw:
+#         assert isinstance(response, list)
+#         if response:  # if the list is not empty
+#             assert isinstance(response[0], dict)
+
+#     # If raw is False, the response should be a DataFrame
+#     else:
+#         assert isinstance(response, pd.DataFrame)
+#         # Checking for expected columns in the DataFrame
+#         assert set(["chain", "protocol", "tvl"]).issubset(response.columns)
+
+#         # Checking if the 'chain' column has been cleaned properly
+#         assert all(response['chain'].str.contains(r'[-\s]') == False)
+
+
 
 
 @pytest.mark.parametrize("chains", CHAINS)
