@@ -15,6 +15,7 @@ from urllib.parse import urlencode
 # do i need get_bridges() or can I just use get_protocols()?
 # handle required vs optional params
 # volumes are wrong because I don't handle the case where optional params are omitted
+# make sure the test paths are accessed properly for when anyone new downloads and runs the code
 
 # general ordering of methods per category:
 # ------ small to big ------
@@ -24,6 +25,10 @@ from urllib.parse import urlencode
 # technically returning a list of Dicts in many cases, may need to change "Returns" comment under each function
 # `params` only ever contains optional parameters. required parameters are explicity called in the function definition.
 
+import requests
+import pandas as pd
+from typing import Union, List, Dict
+from urllib.parse import urlencode
 
 TVL_URL = VOLUMES_URL = FEES_URL = 'https://api.llama.fi'
 COINS_URL = 'https://coins.llama.fi'
@@ -31,7 +36,6 @@ STABLECOINS_URL = 'https://stablecoins.llama.fi'
 YIELDS_URL='https://yields.llama.fi'
 ABI_URL='https://abi-decoder.llama.fi'
 BRIDGES_URL='https://bridges.llama.fi'
-
 
 class Llama:
 
@@ -102,9 +106,8 @@ class Llama:
     Bridges, DEXs, etc. can be fetched from the list of protocols, therefore, they do not have their own mapping function.
     """
 
-
-
-    # should these helper functions include all static info rather than only bare minimum?? leaning towards yes.
+    # should these helper functions include all static info rather than only bare minimum?? 
+    #   leaning towards yes.
 
     
     def get_chains(self):
@@ -180,6 +183,8 @@ class Llama:
 
 
     # --- TVL --- #
+    # all tvl endpoints manually checked. seem good, need to write tests still
+    
     
     def get_all_protocols_current_tvl(self, raw: bool = True) -> Union[List[Dict], pd.DataFrame]:
         """
@@ -196,10 +201,9 @@ class Llama:
         if raw:
             return self._get('TVL', endpoint='/protocols')
 
-        elif not raw:
+        else:
             results = []
 
-            # Iterate over each raw data entry
             for raw_data in self._get('TVL', endpoint='/protocols'):
                 protocol = raw_data.get('slug')
                 chain_tvls = raw_data.get('chainTvls', {})
@@ -215,7 +219,7 @@ class Llama:
             df = pd.DataFrame(results)
             return self._clean_chain_name(df)  
     
-    
+
     def get_protocol_historical_tvl(self, protocols: List[str], raw: bool = True) -> Union[Dict[str, Dict], pd.DataFrame]:
         """
         Get historical TVL of protocol(s) and breakdowns by token and chain.
@@ -229,6 +233,7 @@ class Llama:
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
         """
+        # Convert protocols to list if it's a string
         if isinstance(protocols, str):
             protocols = [protocols]
         
@@ -241,7 +246,7 @@ class Llama:
                 results[protocol] = self._get('TVL', endpoint=f'/protocol/{protocol}')
             return results
 
-        elif not raw:
+        else:
             results = []
 
             for protocol in protocols:
@@ -278,7 +283,7 @@ class Llama:
         if raw:
             return self._get('TVL', endpoint=f'/v2/historicalChainTvl')
 
-        elif not raw:
+        else:
             return pd.DataFrame(self._get('TVL', endpoint=f'/v2/historicalChainTvl'))
     
 
@@ -295,19 +300,20 @@ class Llama:
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
         """
+        # Convert chains to list if it's a string
+        if isinstance(chains, str):
+            chains = [chains]
+
         if raw:
-            if isinstance(chains, str):
-                return self._get('TVL', endpoint=f'/v2/historicalChainTvl/{chains}')
+            if len(chains) == 1:
+                return self._get('TVL', endpoint=f'/v2/historicalChainTvl/{chains[0]}')
             
             results = {}
             for chain in chains:
                 results[chain] = self._get('TVL', endpoint=f'/v2/historicalChainTvl/{chain}')
             return results
 
-        elif not raw:
-            if isinstance(chains, str):
-                chains = [chains]
-
+        else:
             results = []
 
             for chain in chains:
@@ -320,8 +326,7 @@ class Llama:
             return self._clean_chain_name(df)
 
 
-    # need to add raw param here
-    def get_protocol_current_tvl(self, protocols: Union[str, List[str]]) -> Union[float, Dict[str, float]]:
+    def get_protocol_current_tvl(self, protocols: Union[str, List[str]], raw: bool = True) -> Union[float, Dict[str, float], pd.DataFrame]:
         """
         Get current Total Value Locked (TVL) for the specified protocols.
 
@@ -329,23 +334,41 @@ class Llama:
 
         Parameters:
         - protocols (str or List[str], required): A list containing names of the desired protocol(s).
+        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
 
         Returns:
-        - float or Dict[str, float]: 
-            - If a single protocol is provided, returns the TVL as a float.
-            - If multiple protocols are provided, returns a dictionary mapping each protocol name to its TVL.
+        - float or Dict[str, float] or DataFrame: Raw data from the API or a transformed DataFrame.
+            - If a single protocol is provided and raw=True, returns the TVL as a float.
+            - If multiple protocols are provided and raw=True, returns a dictionary mapping each protocol name to its TVL.
+            - If raw=False, returns a DataFrame.
         """
-        if len(protocols) == 1:
-            return self._get('TVL', endpoint=f'/tvl/{protocols[0]}')
-
-        results = {}
+        # Convert protocols to list if it's a string
+        if isinstance(protocols, str):
+            protocols = [protocols]
         
-        for protocol in protocols:
-            data = self._get('TVL', endpoint=f'/tvl/{protocol}')
-            results[protocol] = float(data)
+        if raw:
+            if len(protocols) == 1:
+                return float(self._get('TVL', endpoint=f'/tvl/{protocols[0]}'))
             
-        return results
-    
+            results = {}
+            for protocol in protocols:
+                data = self._get('TVL', endpoint=f'/tvl/{protocol}')
+                results[protocol] = float(data)
+
+            return results
+
+        else:
+            results = []
+            for protocol in protocols:
+                tvl = float(self._get('TVL', endpoint=f'/tvl/{protocol}'))
+                results.append({
+                    'protocol': protocol,
+                    'tvl': tvl
+                })
+
+            df = pd.DataFrame(results)
+            return self._clean_chain_name(df)
+
 
     def get_all_chains_current_tvl(self, raw: bool = True) -> Union[List[Dict], pd.DataFrame]:
         """
@@ -362,7 +385,7 @@ class Llama:
         if raw:
             return self._get('TVL', endpoint=f'/v2/chains')
 
-        elif not raw:
+        else:
             results = []
 
             for entry in self._get('TVL', endpoint=f'/v2/chains'):
@@ -373,7 +396,6 @@ class Llama:
 
             df = pd.DataFrame(results)
             return self._clean_chain_name(df)
-
 
 
 
