@@ -975,3 +975,31 @@ class Llama:
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
         """
+        # Ensure protocols is a list
+        if isinstance(protocols, str):
+            protocols = [protocols]
+
+        if raw:
+            # If raw is True, return raw data for each protocol
+            if len(protocols) == 1:
+                return self._get('FEES', endpoint=f'/summary/fees/{protocols[0]}')
+            
+            results = {}
+            for protocol in protocols:
+                results[protocol] = self._get('FEES', endpoint=f'/summary/fees/{protocol}')
+            return results
+
+        else:
+            # If raw is False, transform the data into DataFrame format
+            results = []
+
+            for protocol in protocols:
+                data = self._get('FEES', endpoint=f'/summary/fees/{protocol}')
+                
+                results.append({
+                    'date': data.get('date'),
+                    'protocol': protocol
+                })
+
+            df = pd.DataFrame(results)
+            return df

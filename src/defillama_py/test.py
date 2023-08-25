@@ -6,7 +6,7 @@ obj = Llama()
 # df = obj.get_chains()
 # df = obj.get_protocols()
 # df = obj.get_stablecoins()
-df = obj.get_pools()
+# df = obj.get_pools()
 
 # df = obj.get_protocol_current_tvl(['velodrome'])
 # df = obj.get_all_protocols_current_tvl(raw=False)
@@ -65,9 +65,11 @@ df = obj.get_pools()
 
 
 # df = obj.get_bridges(params={"includeChains": False}, raw=False)
-df = obj.get_bridge_transactions(id)
+# df = obj.get_bridge_transactions(id)
 
-print(df)
-# print(str(df)[:1000])
+df = obj.get_summary_protocol_fees_revenue(protocols='aave')
+
+# print(df)
+print(str(df)[:1000])
 # df.to_csv('test.csv')
 
