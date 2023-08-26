@@ -13,9 +13,13 @@ from urllib.parse import urlencode
 # lots of work to do on error handling, type checking, type enforcement, etc.
 # urllib for proper string encoding?
 # do i need get_bridges() or can I just use get_protocols()?
+    # should add something like this, bc if i only want to get bridges, it's inconvenient to look through all protocols
+    # also need to do this for dexs, perps, etc.
 # handle required vs optional params
 # volumes are wrong because I don't handle the case where optional params are omitted
 # make sure the test paths are accessed properly for when anyone new downloads and runs the code
+# follow this logic for all functions: exclude_chart = params.get("excludeTotalDataChart", False)
+# what happens if the first protocol/chain in my input list is shorter than the latter options?
 
 # general ordering of methods per category:
 # ------ small to big ------
@@ -69,13 +73,8 @@ class Llama:
         
         url = base_url + endpoint
 
-        # Handle URL encoding for parameters
-        if params:
-            query_string = urlencode(params)
-            url += f"?{query_string}"
-            
         try:
-            response = self.session.request('GET', url, timeout=30)
+            response = self.session.request('GET', url, timeout=30, params=params)
             print(f"Calling API endpoint: {url}")
             response.raise_for_status()
         except requests.Timeout:
@@ -455,22 +454,16 @@ class Llama:
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
         """
-
-        
-        query_string = urlencode(params)
-        endpoint = f"/bridges?{query_string}"
-        response = self._get('BRIDGES', endpoint, params=params)
+        response = self._get('BRIDGES', '/bridges', params=params)
 
         if raw:
             return response
-        
-        elif not raw:
-            if params.get('includeChains'):
+        else:
+            if params and params.get('includeChains'):
                 df = pd.DataFrame(response['chains'])
             else:
                 df = pd.DataFrame(response['bridges'])
-
-        return df
+            return df
 
     
 
@@ -539,7 +532,6 @@ class Llama:
 
     # --- Volumes --- #
     
-    # this is likely broken based on changing function definition inputs
     def get_dex_volume(self, params: Dict = None, raw: bool = True):
         """
         Get all dexs along wtih summaries of their volumes and dataType history data.
@@ -556,42 +548,32 @@ class Llama:
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
         """
-        
-        if not params:
-            raise ValueError("params dictionary is missing.")
-        
-        query_string = urlencode(params)
-        endpoint = f"/overview/dexs?{query_string}"
+        response = self._get('VOLUMES', '/overview/dexs', params=params)
 
         if raw:
-            return self._get('VOLUMES', endpoint, params=params)
+            return response
 
-        elif not raw:
-            if params['excludeTotalDataChart'] == False and params['excludeTotalDataChartBreakdown'] == True:
-                response = self._get('VOLUMES', endpoint, params=params)
-                
-                df = pd.DataFrame(response['totalDataChart'], columns=['date', 'volume'])
-                return df
-            
-            elif params['excludeTotalDataChart'] == True and params['excludeTotalDataChartBreakdown'] == False:
-                response = self._get('VOLUMES', endpoint, params=params)
-            
-                records = []
-                for item in response['totalDataChartBreakdown']:
-                    timestamp, protocols = item
-                    for protocol, volume in protocols.items():
-                        records.append({'date': timestamp, 'protocol': protocol, 'volume': volume})
+        exclude_chart = params.get('excludeTotalDataChart', False) if params else False
+        exclude_chart_breakdown = params.get('excludeTotalDataChartBreakdown', False) if params else False
 
-                df = pd.DataFrame(records)
-                return df
-            
-            elif params['excludeTotalDataChart'] == params['excludeTotalDataChartBreakdown']:
-                raise ValueError("Both excludeTotalDataChart and excludeTotalDataChartBreakdown cannot have the same value (either both True or both False) if raw = False.")
+        if not exclude_chart and exclude_chart_breakdown:
+            return pd.DataFrame(response['totalDataChart'], columns=['date', 'volume'])
+
+        elif exclude_chart and not exclude_chart_breakdown:
+            records = []
+            for item in response['totalDataChartBreakdown']:
+                timestamp, protocols = item
+                for protocol, volume in protocols.items():
+                    records.append({'date': timestamp, 'protocol': protocol, 'volume': volume})
+
+            return pd.DataFrame(records)
+
+        # Default return 'totalDataChart' if raw = False and params.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
+        else:
+            return pd.DataFrame(response['totalDataChart'], columns=['date', 'volume'])
 
 
-
-    # is the response from allChains in /overview/chains the same as using get_chains()?
-    def get_chain_perps_volume(self, chains: Union[str, List[str]], params: Dict = None, raw: bool = True):
+    def get_chain_dex_volume(self, chains: Union[str, List[str]], params: Dict = None, raw: bool = True):
         """
         Get all dexs along with summaries of their volumes and dataType history data filtering by chain.
         
@@ -607,59 +589,48 @@ class Llama:
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
-        """
-            
+        """      
         if isinstance(chains, str):
             chains = [chains]
-        elif not isinstance(chains, list):
-            raise ValueError("chains must be either a string or a list of strings.")
-        
-        if not params:
-            raise ValueError("params dictionary is missing.")
-        
-        query_string = urlencode(params)
 
-        results = []
+        results = {}
+        dfs = []
+        
         for chain in chains:
-            endpoint = f"/overview/dexs/{chain}?{query_string}"
+            response = self._get('VOLUMES', f"/overview/dexs/{chain}", params=params)
 
             if raw:
-                results.append(self._get('VOLUMES', endpoint, params=params))
+                results[chain] = response
             else:
-                if params['excludeTotalDataChart'] == False and params['excludeTotalDataChartBreakdown'] == True:
-                    response = self._get('VOLUMES', endpoint, params=params)
+                if not params or (not params.get('excludeTotalDataChart', False) and params.get('excludeTotalDataChartBreakdown', False)):
                     df = pd.DataFrame(response['totalDataChart'], columns=['date', 'volume'])
                     df['chain'] = chain
-                    df = df[['date', 'chain', 'volume']]
-                    df = self._clean_chain_name(df)
-                    results.append(df)
+                    dfs.append(self._clean_chain_name(df))
 
-                elif params['excludeTotalDataChart'] == True and params['excludeTotalDataChartBreakdown'] == False:
-                    response = self._get('VOLUMES', endpoint, params=params)
-
+                elif params.get('excludeTotalDataChart', False) and not params.get('excludeTotalDataChartBreakdown', False):
                     records = []
                     for item in response['totalDataChartBreakdown']:
                         timestamp, protocols = item
                         for protocol, volume in protocols.items():
                             records.append({'date': timestamp, 'chain': chain, 'protocol': protocol, 'volume': volume})
-
                     df = pd.DataFrame(records)
-                    df = self._clean_chain_name(df)
-                    results.append(df)
+                    dfs.append(self._clean_chain_name(df))
                     
-                elif params['excludeTotalDataChart'] == params['excludeTotalDataChartBreakdown']:
-                    raise ValueError("Both excludeTotalDataChart and excludeTotalDataChartBreakdown cannot have the same value (either both True or both False) if raw = False.")
-
-        # Concatenate results
+                else:
+                    # Default return 'totalDataChart' if raw = False and params.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
+                    df = pd.DataFrame(response['totalDataChart'], columns=['date', 'volume'])
+                    df['chain'] = chain
+                    dfs.append(self._clean_chain_name(df))
+        
         if raw:
             return results
         else:
-            return pd.concat(results, ignore_index=True)
+            return pd.concat(dfs, ignore_index=True)
 
     
-    def get_summary_dex_volume(self, protocols: Union[str, List[str]], params: Dict = None, raw: bool = True) -> Union[List[Dict], pd.DataFrame]:
+    def get_protocol_dex_volume(self, protocols: Union[str, List[str]], params: Dict = None, raw: bool = True) -> Union[List[Dict], pd.DataFrame]:
         """
-        Get summary of dex volume with historical data.
+        Get summary of protocol dex volume with historical data.
         
         Endpoint: /summary/dexs/{protocol}
 
@@ -674,9 +645,56 @@ class Llama:
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
         """
+        if isinstance(protocols, str):
+            protocols = [protocols]
+
+        results = {}
+
+        for protocol in protocols:
+            response = self._get('VOLUMES', f'/summary/dexs/{protocol}', params=params)
+            results[protocol] = response
+
+        if raw:
+            return results
+        else:
+            exclude_chart = params.get("excludeTotalDataChart", False)
+            exclude_chart_breakdown = params.get("excludeTotalDataChartBreakdown", False)
+
+            all_data = []
+            
+            for protocol, data in results.items():
+                # Handle case for totalDataChart
+                if not exclude_chart and exclude_chart_breakdown:
+                    for timestamp, volume in data["totalDataChart"]:
+                        all_data.append({
+                            "timestamp": timestamp,
+                            "protocol": protocol,
+                            "volume": volume
+                        })
+
+                # Handle case for totalDataChartBreakdown
+                elif not exclude_chart_breakdown and exclude_chart:
+                        for timestamp, chains in data["totalDataChartBreakdown"]:
+                            for chain, protocols_data in chains.items():
+                                for protocol_version, volume in protocols_data.items():
+                                    all_data.append({
+                                        "timestamp": timestamp,
+                                        "chain": chain,
+                                        "protocol": protocol,
+                                        "protocol_version": protocol_version,
+                                        "volume": volume
+                                    })
+                else:
+                    for timestamp, volume in data["totalDataChart"]:
+                        all_data.append({
+                            "timestamp": timestamp,
+                            "protocol": protocol,
+                            "volume": volume
+                        })
+
+            return pd.DataFrame(all_data)
 
 
-    # this is likely broken based on changing function definition inputs
     def get_perps_volume(self, params: Dict = None, raw: bool = True):
         """
         Get all perps dexs along wtih summaries of their volumes and dataType history data.
@@ -693,40 +711,31 @@ class Llama:
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
         """
-        if params:
-            query_string = urlencode(params)
-            endpoint = f"/overview/derivatives?{query_string}"
-            
-        elif not params:
-            raise ValueError("params dictionary is missing.")
-        
+        response = self._get('VOLUMES', '/overview/derivatives', params=params)
+
         if raw:
-            return self._get('VOLUMES', endpoint, params=params)
+            return response
 
-        elif not raw:
-            if params['excludeTotalDataChart'] == False and params['excludeTotalDataChartBreakdown'] == True:
-                response = self._get('VOLUMES', endpoint, params=params)
-                
-                df = pd.DataFrame(response['totalDataChart'], columns=['date', 'volume'])
-                return df
-            
-            elif params['excludeTotalDataChart'] == True and params['excludeTotalDataChartBreakdown'] == False:
-                response = self._get('VOLUMES', endpoint, params=params)
-            
-                records = []
-                for item in response['totalDataChartBreakdown']:
-                    timestamp, protocols = item
-                    for protocol, volume in protocols.items():
-                        records.append({'date': timestamp, 'protocol': protocol, 'volume': volume})
+        exclude_chart = params.get('excludeTotalDataChart', False) if params else False
+        exclude_chart_breakdown = params.get('excludeTotalDataChartBreakdown', False) if params else False
 
-                df = pd.DataFrame(records)
-                return df
-            
-            elif params['excludeTotalDataChart'] == params['excludeTotalDataChartBreakdown']:
-                raise ValueError("Both excludeTotalDataChart and excludeTotalDataChartBreakdown cannot have the same value (either both True or both False) if raw = False.")
+        if not exclude_chart and exclude_chart_breakdown:
+            return pd.DataFrame(response['totalDataChart'], columns=['date', 'volume'])
 
+        elif exclude_chart and not exclude_chart_breakdown:
+            records = []
+            for item in response['totalDataChartBreakdown']:
+                timestamp, protocols = item
+                for protocol, volume in protocols.items():
+                    records.append({'date': timestamp, 'protocol': protocol, 'volume': volume})
 
-    # is the response from allChains in /overview/derivatives the same as using get_chains()?
+            return pd.DataFrame(records)
+
+        # Default return 'totalDataChart' if raw = False and params.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
+        else:
+            return pd.DataFrame(response['totalDataChart'], columns=['date', 'volume'])
+        
+
     def get_chain_perps_volume(self, chains: Union[str, List[str]], params: Dict = None, raw: bool = True):
         """
         Get all perps dexs along with summaries of their volumes and dataType history data filtering by chain.
@@ -746,56 +755,45 @@ class Llama:
         """
         if isinstance(chains, str):
             chains = [chains]
-        elif not isinstance(chains, list):
-            raise ValueError("chains must be either a string or a list of strings.")
-        
-        if not params:
-            raise ValueError("params dictionary is missing.")
-        
-        # Create the endpoint URL
-        query_string = urlencode(params)
 
-        results = []
+        results = {}
+        dfs = []
+        
         for chain in chains:
-            endpoint = f"/overview/derivatives/{chain}?{query_string}"
+            response = self._get('VOLUMES', f"/overview/derivatives/{chain}", params=params)
 
             if raw:
-                results.append(self._get('VOLUMES', endpoint, params=params))
+                results[chain] = response
             else:
-                if params['excludeTotalDataChart'] == False and params['excludeTotalDataChartBreakdown'] == True:
-                    response = self._get('VOLUMES', endpoint, params=params)
+                if not params or (not params.get('excludeTotalDataChart', False) and params.get('excludeTotalDataChartBreakdown', False)):
                     df = pd.DataFrame(response['totalDataChart'], columns=['date', 'volume'])
                     df['chain'] = chain
-                    df = df[['date', 'chain', 'volume']]
-                    df = self._clean_chain_name(df)
-                    results.append(df)
+                    dfs.append(self._clean_chain_name(df))
 
-                elif params['excludeTotalDataChart'] == True and params['excludeTotalDataChartBreakdown'] == False:
-                    response = self._get('VOLUMES', endpoint, params=params)
-
+                elif params.get('excludeTotalDataChart', False) and not params.get('excludeTotalDataChartBreakdown', False):
                     records = []
                     for item in response['totalDataChartBreakdown']:
                         timestamp, protocols = item
                         for protocol, volume in protocols.items():
                             records.append({'date': timestamp, 'chain': chain, 'protocol': protocol, 'volume': volume})
-
                     df = pd.DataFrame(records)
-                    df = self._clean_chain_name(df)
-                    results.append(df)
+                    dfs.append(self._clean_chain_name(df))
                     
-                elif params['excludeTotalDataChart'] == params['excludeTotalDataChartBreakdown']:
-                    raise ValueError("Both excludeTotalDataChart and excludeTotalDataChartBreakdown cannot have the same value (either both True or both False) if raw = False.")
-
-        # Concatenate results
+                else:
+                    # Default return 'totalDataChart' if raw = False and params.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
+                    df = pd.DataFrame(response['totalDataChart'], columns=['date', 'volume'])
+                    df['chain'] = chain
+                    dfs.append(self._clean_chain_name(df))
+        
         if raw:
             return results
         else:
-            return pd.concat(results, ignore_index=True)
+            return pd.concat(dfs, ignore_index=True)
 
     
-    def get_summary_perps_volume(self, protocols: Union[str, List[str]], params: Dict = None, raw: bool = True) -> Union[List[Dict], pd.DataFrame]:
+    def get_protocol_perps_volume(self, protocols: Union[str, List[str]], params: Dict = None, raw: bool = True) -> Union[List[Dict], pd.DataFrame]:
         """
-        Get summary of perps dex volume with historical data.
+        Get summary of protocol perps dex volume with historical data.
         
         Endpoint: /summary/derivatives/{protocol}
 
@@ -810,9 +808,56 @@ class Llama:
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
         """
+        if isinstance(protocols, str):
+            protocols = [protocols]
+
+        results = {}
+
+        for protocol in protocols:
+            response = self._get('VOLUMES', f'/summary/derivatives/{protocol}', params=params)
+            results[protocol] = response
+
+        if raw:
+            return results
+        else:
+            exclude_chart = params.get("excludeTotalDataChart", False)
+            exclude_chart_breakdown = params.get("excludeTotalDataChartBreakdown", False)
+
+            all_data = []
+            
+            for protocol, data in results.items():
+                # Handle case for totalDataChart
+                if not exclude_chart and exclude_chart_breakdown:
+                    for timestamp, volume in data["totalDataChart"]:
+                        all_data.append({
+                            "timestamp": timestamp,
+                            "protocol": protocol,
+                            "volume": volume
+                        })
+
+                # Handle case for totalDataChartBreakdown
+                elif not exclude_chart_breakdown and exclude_chart:
+                        for timestamp, chains in data["totalDataChartBreakdown"]:
+                            for chain, protocols_data in chains.items():
+                                for protocol_version, volume in protocols_data.items():
+                                    all_data.append({
+                                        "timestamp": timestamp,
+                                        "chain": chain,
+                                        "protocol": protocol,
+                                        "protocol_version": protocol_version,
+                                        "volume": volume
+                                    })
+                else:
+                    for timestamp, volume in data["totalDataChart"]:
+                        all_data.append({
+                            "timestamp": timestamp,
+                            "protocol": protocol,
+                            "volume": volume
+                        })
+
+            return pd.DataFrame(all_data)
 
 
-    # this is likely broken based on changing function definition inputs
     def get_options_volume(self, params: Dict = None, raw: bool = True):
         """
         Get all options dexs along wtih summaries of their volumes and dataType history data.
@@ -829,40 +874,31 @@ class Llama:
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
         """
-        if params:
-            query_string = urlencode(params)
-            endpoint = f"/overview/options?{query_string}"
-            
-        elif not params:
-            raise ValueError("params dictionary is missing.")
-        
+        response = self._get('VOLUMES', '/overview/option', params=params)
+
         if raw:
-            return self._get('VOLUMES', endpoint, params=params)
+            return response
 
-        elif not raw:
-            if params['excludeTotalDataChart'] == False and params['excludeTotalDataChartBreakdown'] == True:
-                response = self._get('VOLUMES', endpoint, params=params)
-                
-                df = pd.DataFrame(response['totalDataChart'], columns=['date', 'volume'])
-                return df
-            
-            elif params['excludeTotalDataChart'] == True and params['excludeTotalDataChartBreakdown'] == False:
-                response = self._get('VOLUMES', endpoint, params=params)
-            
-                records = []
-                for item in response['totalDataChartBreakdown']:
-                    timestamp, protocols = item
-                    for protocol, volume in protocols.items():
-                        records.append({'date': timestamp, 'protocol': protocol, 'volume': volume})
+        exclude_chart = params.get('excludeTotalDataChart', False) if params else False
+        exclude_chart_breakdown = params.get('excludeTotalDataChartBreakdown', False) if params else False
 
-                df = pd.DataFrame(records)
-                return df
-            
-            elif params['excludeTotalDataChart'] == params['excludeTotalDataChartBreakdown']:
-                raise ValueError("Both excludeTotalDataChart and excludeTotalDataChartBreakdown cannot have the same value (either both True or both False) if raw = False.")
+        if not exclude_chart and exclude_chart_breakdown:
+            return pd.DataFrame(response['totalDataChart'], columns=['date', 'volume'])
 
+        elif exclude_chart and not exclude_chart_breakdown:
+            records = []
+            for item in response['totalDataChartBreakdown']:
+                timestamp, protocols = item
+                for protocol, volume in protocols.items():
+                    records.append({'date': timestamp, 'protocol': protocol, 'volume': volume})
 
-    # is the response from allChains in /overview/options the same as using get_chains()?
+            return pd.DataFrame(records)
+
+        # Default return 'totalDataChart' if raw = False and params.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
+        else:
+            return pd.DataFrame(response['totalDataChart'], columns=['date', 'volume'])
+        
+
     def get_chain_options_volume(self, chains: Union[str, List[str]], params: Dict = None, raw: bool = True):
         """
         Get all options dexs along with summaries of their volumes and dataType history data filtering by chain.
@@ -882,52 +918,45 @@ class Llama:
         """
         if isinstance(chains, str):
             chains = [chains]
-            
 
-        # Create the endpoint URL
-        query_string = urlencode(params)
-
-        results = []
+        results = {}
+        dfs = []
+        
         for chain in chains:
-            endpoint = f"/overview/options/{chain}?{query_string}"
+            response = self._get('VOLUMES', f"/overview/options/{chain}", params=params)
 
             if raw:
-                results.append(self._get('VOLUMES', endpoint, params=params))
+                results[chain] = response
             else:
-                if params['excludeTotalDataChart'] == False and params['excludeTotalDataChartBreakdown'] == True:
-                    response = self._get('VOLUMES', endpoint, params=params)
+                if not params or (not params.get('excludeTotalDataChart', False) and params.get('excludeTotalDataChartBreakdown', False)):
                     df = pd.DataFrame(response['totalDataChart'], columns=['date', 'volume'])
                     df['chain'] = chain
-                    df = df[['date', 'chain', 'volume']]
-                    df = self._clean_chain_name(df)
-                    results.append(df)
+                    dfs.append(self._clean_chain_name(df))
 
-                elif params['excludeTotalDataChart'] == True and params['excludeTotalDataChartBreakdown'] == False:
-                    response = self._get('VOLUMES', endpoint, params=params)
-
+                elif params.get('excludeTotalDataChart', False) and not params.get('excludeTotalDataChartBreakdown', False):
                     records = []
                     for item in response['totalDataChartBreakdown']:
                         timestamp, protocols = item
                         for protocol, volume in protocols.items():
                             records.append({'date': timestamp, 'chain': chain, 'protocol': protocol, 'volume': volume})
-
                     df = pd.DataFrame(records)
-                    df = self._clean_chain_name(df)
-                    results.append(df)
+                    dfs.append(self._clean_chain_name(df))
                     
-                elif params['excludeTotalDataChart'] == params['excludeTotalDataChartBreakdown']:
-                    raise ValueError("Both excludeTotalDataChart and excludeTotalDataChartBreakdown cannot have the same value (either both True or both False) if raw = False.")
-
-        # Concatenate results
+                else:
+                    # Default return 'totalDataChart' if raw = False and params.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
+                    df = pd.DataFrame(response['totalDataChart'], columns=['date', 'volume'])
+                    df['chain'] = chain
+                    dfs.append(self._clean_chain_name(df))
+        
         if raw:
             return results
         else:
-            return pd.concat(results, ignore_index=True)
+            return pd.concat(dfs, ignore_index=True)
     
 
-    def get_summary_options_volume(self, protocols: Union[str, List[str]], params: Dict = None, raw: bool = True) -> Union[List[Dict], pd.DataFrame]:
+    def get_protocol_options_volume(self, protocols: Union[str, List[str]], params: Dict = None, raw: bool = True) -> Union[List[Dict], pd.DataFrame]:
         """
-        Get summary of options dex volume with historical data.
+        Get summary of protocol options dex volume with historical data.
         
         Endpoint: /summary/options/{protocol}
 
@@ -940,6 +969,55 @@ class Llama:
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
         """
+        if isinstance(protocols, str):
+            protocols = [protocols]
+
+        results = {}
+
+        for protocol in protocols:
+            response = self._get('VOLUMES', f'/summary/options/{protocol}', params=params)
+            results[protocol] = response
+
+        if raw:
+            return results
+        else:
+            exclude_chart = params.get("excludeTotalDataChart", False)
+            exclude_chart_breakdown = params.get("excludeTotalDataChartBreakdown", False)
+
+            all_data = []
+            
+            for protocol, data in results.items():
+                # Handle case for totalDataChart
+                if not exclude_chart and exclude_chart_breakdown:
+                    for timestamp, volume in data["totalDataChart"]:
+                        all_data.append({
+                            "timestamp": timestamp,
+                            "protocol": protocol,
+                            "volume": volume
+                        })
+
+                # Handle case for totalDataChartBreakdown
+                elif not exclude_chart_breakdown and exclude_chart:
+                        for timestamp, chains in data["totalDataChartBreakdown"]:
+                            for chain, protocols_data in chains.items():
+                                for protocol_version, volume in protocols_data.items():
+                                    all_data.append({
+                                        "timestamp": timestamp,
+                                        "chain": chain,
+                                        "protocol": protocol,
+                                        "protocol_version": protocol_version,
+                                        "volume": volume
+                                    })
+                else:
+                    for timestamp, volume in data["totalDataChart"]:
+                        all_data.append({
+                            "timestamp": timestamp,
+                            "protocol": protocol,
+                            "volume": volume
+                        })
+
+            return pd.DataFrame(all_data)
+
 
 
     # --- Fees --- #
