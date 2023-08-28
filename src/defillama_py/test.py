@@ -36,7 +36,7 @@ obj = Llama()
 # df = obj.get_options_volume(raw=False, params = {
 #     "excludeTotalDataChart": True,
 #     "excludeTotalDataChartBreakdown": False,
-#     "dataType": "dailyVolume"
+#     "dataType": "dailyNotionalVolume"
 # })
 
 # df = obj.get_chain_dex_volume(chains=['arbitrum', 'optimism'], raw=False, params = {
@@ -52,17 +52,31 @@ obj = Llama()
 # })
 
 
-df = obj.get_protocol_dexs_volume(['lyra', 'aevo'], raw=False, params = {
-    "excludeTotalDataChart": False,
-    "excludeTotalDataChartBreakdown": True,
-    # "dataType": "dailyVolume"
+# df = obj.get_protocol_options_volume('lyra', raw=False, params = {
+#     "excludeTotalDataChart": False,
+#     "excludeTotalDataChartBreakdown": True,
+#     "dataType": "dailyVolume"
+# })
+
+# df = obj.get_protocol_fees_revenue('uniswap', raw=False, params = {
+#     "excludeTotalDataChart": True,
+#     "excludeTotalDataChartBreakdown": False,
+#     "dataType": "dailyFees"
+# })
+
+
+
+df = obj.get_chain_fees_revenue('ethereum', raw=False, params = {
+    "excludeTotalDataChart": True,
+    "excludeTotalDataChartBreakdown": False,
+    "dataType": "totalFees"
 })
 
 
 # df = obj.get_bridges(params={"includeChains": False}, raw=False)
 # df = obj.get_bridge_transactions(id)
 
-# df = obj.get_summary_protocol_fees_revenue(protocols='aave', raw=True)
+
 
 print(df)
 # print(str(df)[:1000])
