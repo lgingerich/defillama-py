@@ -71,17 +71,17 @@ class Llama:
 
         try:
             response = self.session.request('GET', url, timeout=30, params=params)
-            print(f"Calling API endpoint: {url}")
+            print(f"Calling API endpoint: {response.url}")
             response.raise_for_status()
         except requests.Timeout:
-            raise TimeoutError(f"Request to '{url}' timed out.")
+            raise TimeoutError(f"Request to '{response.url}' timed out.")
         except requests.RequestException as e:
-            raise ConnectionError(f"An error occurred while trying to connect to '{url}'. {str(e)}")
+            raise ConnectionError(f"An error occurred while trying to connect to '{response.url}'. {str(e)}")
         
         try:
             return response.json()
         except ValueError:
-            raise ValueError(f"Invalid JSON response received from '{url}'.")
+            raise ValueError(f"Invalid JSON response received from '{response.url}'.")
 
         
     def _clean_chain_name(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -231,7 +231,6 @@ class Llama:
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
         """
-        # Convert protocols to list if it's a string
         if isinstance(protocols, str):
             protocols = [protocols]
         
@@ -435,7 +434,7 @@ class Llama:
 
     # --- Bridges --- #
     
-    def get_bridge_volume(self, params: Dict = None, raw: bool = True) -> Union[Dict, pd.DataFrame]:
+    def get_all_bridge_volume(self, params: Dict = None, raw: bool = True) -> Union[Dict, pd.DataFrame]:
         """
         Get bridge data with summaries of recent bridge volumes.
         
@@ -455,21 +454,101 @@ class Llama:
         if raw:
             return response
         else:
-            if params and params.get('includeChains'):
-                df = pd.DataFrame(response['chains'])
-            else:
-                df = pd.DataFrame(response['bridges'])
-            return df
-
+            return pd.DataFrame(response['bridges'])
     
 
+    # still need to handle raw=False
+    def get_bridge_volume(self, ids: List[str], raw: bool = True) -> Union[Dict, pd.DataFrame]:
+        """
+        Get summary of bridge volume and volume breakdown by chain.
+        
+        Endpoint: /bridges/{id}
 
-    # /bridges/{id}
+        Parameters:
+        - ids (str or List[str], required): A list containing id's of the desired bridge(s).
+        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. 
+                                Defaults to True.
+
+        Returns:
+        - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
+        """
+        if isinstance(ids, str):
+            ids = [ids]
+        
+        if raw:
+            if len(ids) == 1:
+                return self._get('BRIDGES', endpoint=f'/bridges/{ids[0]}')
+            
+            results = {}
+            for id in ids:
+                results[id] = self._get('BRIDGES', endpoint=f'/bridges/{ids}')
+            return results
 
 
+    # still need to handle raw=False
+    def get_chain_bridge_volume(self, chains: List[str], params: Dict = None, raw: bool = True) -> Union[Dict, pd.DataFrame]:
+        """
+        Get historical volumes for a bridge, chain, or bridge on a particular chain.
+        
+        Endpoint: /bridgevolume/{chain}
 
+        Parameters:
+        - chains (str or List[str], required): A list containing id's of the desired bridge(s).
+        - params (Dict, optional): Dictionary containing optional API parameters.
+            - id (int): Id's of the desired bridge(s).
+        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. 
+                                Defaults to True.
 
-    # /bridgevolume/{chain}
+        Returns:
+        - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
+        """
+        if isinstance(chains, str):
+            chains = [chains]
+        
+        if raw:
+            if len(chains) == 1:
+                return self._get('BRIDGES', endpoint=f'/bridgevolume/{chains[0]}')
+            
+            results = {}
+            for chain in chains:
+                results[chain] = self._get('BRIDGES', endpoint=f'/bridgevolume/{chains}')
+            return results
+    
+    
+    # still need to handle raw=False
+    def get_chain_bridge_day_volume(self, timestamp: int, chains: List[str], params: Dict = None, raw: bool = True) -> Union[Dict, pd.DataFrame]:
+        """
+        Get a 24hr token and address volume breakdown for a bridge.
+        
+        Endpoint: /bridgedaystats/{timestamp}/{chain}
+
+        Parameters:
+        - timestamp (int, required): Unix timestamp. Data returned will be for the 24hr period starting at 00:00 UTC that the timestamp lands in.
+        - chains (str or List[str], required): chain slug(s) — you can get these from get_chains().
+        - params (Dict, optional): Dictionary containing optional API parameters.
+            - id (int): Id's of the desired bridge(s).
+        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. 
+                                Defaults to True.
+
+        Returns:
+        - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
+        """       
+        
+        if isinstance(chains, str):
+            chains = [chains]
+        
+        if raw:
+            if len(chains) == 1:
+                return self._get('BRIDGES', endpoint=f'/bridgedaystats/{timestamp}/{chains[0]}')
+            
+            results = {}
+            for chain in chains:
+                results[chain] = self._get('BRIDGES', endpoint=f'/bridgedaystats/{timestamp}/{chains}')
+            return results    
+        # doesn't work for multiple chains
+    
+    
+    
     # /bridgedaystats/{timestamp}/{chain}
     
 
@@ -512,18 +591,6 @@ class Llama:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
         """
 
-        if not params:
-            params = {}
-
-        query_string = urlencode(params)
-        endpoint = f"/transactions/{id}?{query_string}"
-        response = self._get(endpoint, params=params)
-
-        if raw:
-            return response
-        else:
-            df = pd.DataFrame(response)
-            return df
 
 
     # --- Volumes --- #
