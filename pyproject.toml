@@ -27,6 +27,8 @@ pytest = ">=7.4.0"
 [tool.poetry.group.dev.dependencies]
 black = "^23.7.0"
 ruff = "^0.0.286"
+pre-commit = "^3.3.3"
+docformatter = "^1.7.5"
 
 [build-system]
 requires = ["poetry-core"]

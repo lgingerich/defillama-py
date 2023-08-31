@@ -1,18 +1,25 @@
-# TO DO:
+"""
+TO DO:
 
-# packaged transformations should return only critical data (no metadata). for a tvl endpoint, only return tvl
-# handle potential rate limiting: 500 requests / min
-# check that function inputs (chains, protocols, coins, etc.) exist
-# check is instance and type check matching
-# lots of work to do on error handling, type checking, type enforcement, etc.
-# make sure the test paths are accessed properly for when anyone new downloads and runs the code
-# follow this logic for all functions: exclude_chart = params.get("excludeTotalDataChart", False)
-# what happens if the first protocol/chain in my input list is shorter than the later options?
-# maybe add dynamic column names. can reference get_protocol_fees_revenue() implentation
+packaged transformations should return only critical data (no metadata).
+    for a tvl endpoint, only return tvl
+handle potential rate limiting: 500 requests / min
+check that function inputs (chains, protocols, coins, etc.) exist
+check is instance and type check matching
+lots of work to do on error handling, type checking, etc.
+make sure the test paths are accessed properly for when anyone new
+    downloads and runs the code
+follow this logic: exclude_chart = params.get("excludeTotalDataChart", False)
+what happens if the first protocol/chain in my input list is shorter
+than the later options?
+maybe add dynamic column names. can reference get_protocol_fees_revenue() implentation
 
-# technically returning a list of Dicts in many cases, may need to change "Returns" comment under each function
-# `params` only ever contains optional parameters. required parameters are explicity called in the function definition.
+technically returning a list of Dicts in many cases, may need to change "Returns"
+comment under each function
+`params` only ever contains optional parameters. required parameters are explicity
+called in the function definition.
 
+"""
 import requests
 import pandas as pd
 from typing import Union, List, Dict
@@ -29,15 +36,11 @@ class Llama:
     # --- Initialization and Helpers --- #
 
     def __init__(self):
-        """
-        Initialize the Llama object with a new session for making HTTP requests.
-        """
+        """Initialize the Llama object with a new session for making HTTP requests."""
         self.session = requests.Session()
 
     def _get(self, api_tag: str, endpoint: str, params: Dict = None):
-        """
-        Internal helper to make GET requests.
-        """
+        """Internal helper to make GET requests."""
         BASE_URLS = {
             "TVL": TVL_URL,
             "COINS": COINS_URL,
@@ -63,7 +66,8 @@ class Llama:
             raise TimeoutError(f"Request to '{response.url}' timed out.")
         except requests.RequestException as e:
             raise ConnectionError(
-                f"An error occurred while trying to connect to '{response.url}'. {str(e)}"
+                f"An error occurred while trying "
+                f"to connect to '{response.url}'. {str(e)}"
             )
 
         try:
@@ -72,8 +76,8 @@ class Llama:
             raise ValueError(f"Invalid JSON response received from '{response.url}'.")
 
     def _clean_chain_name(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Takes a DataFrame, and for the "chain" column:
+        """Takes a DataFrame, and for the "chain" column:
+
         - Converts the names to lowercase
         - Replaces spaces, hyphens, and dashes with underscores
         """
@@ -84,19 +88,20 @@ class Llama:
 
     # --- Mappings --- #
     """
-    Helper functions to get full lists of all chains, protocols, stablecoins, and pools tracked by DefiLlama.
-    Used to map general names with unique identifiers such as chain IDs and protocol slugs.
+    Helper functions to get full lists of all chains, protocols, stablecoins, and pools
+      tracked by DefiLlama.
+    Used to map general names with unique identifiers such as chain IDs and protocol
+    slugs.
     Returns minimum information necessary to uniquely identify objects.
-    Bridges, DEXs, etc. can be fetched from the list of protocols, therefore, they do not have their own mapping function.
+    Bridges, DEXs, etc. can be fetched from the list of protocols, therefore, they do
+    not have their own mapping function.
     """
 
-    # should these helper functions include all static info rather than only bare minimum??
+    # should helper functions include all static info rather than only bare minimum??
     #   leaning towards yes.
 
     def get_chains(self):
-        """
-        Retrieve a list of all chains with their chain ID and name
-        """
+        """Retrieve a list of all chains with their chain ID and name."""
         results = []
 
         response = self._get("TVL", endpoint="/v2/chains")
@@ -107,9 +112,7 @@ class Llama:
         return results
 
     def get_protocols(self):
-        """
-        Retrieve a list of all protocols with their ID, name, and slug
-        """
+        """Retrieve a list of all protocols with their ID, name, and slug."""
         results = []
 
         response = self._get("TVL", endpoint="/protocols")
@@ -122,9 +125,7 @@ class Llama:
         return results
 
     def get_stablecoins(self):
-        """
-        Retrieve a list of all stablecoins with their id, name, and symbol
-        """
+        """Retrieve a list of all stablecoins with their id, name, and symbol."""
         results = []
 
         response = self._get("STABLECOINS", endpoint="/stablecoins")
@@ -137,9 +138,8 @@ class Llama:
         return results
 
     def get_pools(self):
-        """
-        Retrieve a list of all pools with their chain, project, symbol, and pool id
-        """
+        """Retrieve a list of all pools with their chain, project, symbol, and pool
+        id."""
         results = []
 
         response = self._get("YIELDS", endpoint="/pools")
@@ -162,13 +162,13 @@ class Llama:
     def get_all_protocols_current_tvl(
         self, raw: bool = True
     ) -> Union[List[Dict], pd.DataFrame]:
-        """
-        Get all protocols on DefiLlama along with their TVL.
+        """Get all protocols on DefiLlama along with their TVL.
 
         Endpoint: /protocols
 
         Parameters:
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame. Defaults to True.
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
@@ -193,14 +193,15 @@ class Llama:
     def get_protocol_historical_tvl(
         self, protocols: List[str], raw: bool = True
     ) -> Union[Dict[str, Dict], pd.DataFrame]:
-        """
-        Get historical TVL of protocol(s) and breakdowns by token and chain.
+        """Get historical TVL of protocol(s) and breakdowns by token and chain.
 
         Endpoint: /protocol/{protocol}
 
         Parameters:
-            - protocols (str or List[str], required): protocol slug(s) — you can get these from get_protocols().
-            - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+            - protocols (str or List[str], required): protocol slug(s) — you can get
+            these from get_protocols().
+            - raw (bool, optional): If True, returns raw data. If False, returns a
+            transformed DataFrame. Defaults to True.
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
@@ -243,13 +244,14 @@ class Llama:
     def get_all_chains_historical_tvl(
         self, raw: bool = True
     ) -> Union[List[Dict], pd.DataFrame]:
-        """
-        Get historical TVL (excludes liquid staking and double counted tvl) of DeFi on all chains.
+        """Get historical TVL (excludes liquid staking and double counted tvl) of DeFi
+        on all chains.
 
         Endpoint: /v2/historicalChainTvl
 
         Parameters:
-            - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+            - raw (bool, optional): If True, returns raw data. If False, returns a
+            transformed DataFrame. Defaults to True.
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
@@ -261,14 +263,16 @@ class Llama:
             return pd.DataFrame(self._get("TVL", endpoint="/v2/historicalChainTvl"))
 
     def get_chain_historical_tvl(self, chains: Union[str, List[str]], raw: bool = True):
-        """
-        Get historical TVL (excludes liquid staking and double counted tvl) of a chain(s).
+        """Get historical TVL (excludes liquid staking and double counted tvl) of a
+        chain(s).
 
         Endpoint: /v2/historicalChainTvl/{chain}
 
         Parameters:
-            - chains (str or List[str], required): chain slug(s) — you can get these from get_chains().
-            - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+            - chains (str or List[str], required): chain slug(s) — you can get these
+            from get_chains().
+            - raw (bool, optional): If True, returns raw data. If False, returns a
+            transformed DataFrame. Defaults to True.
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
@@ -305,19 +309,22 @@ class Llama:
     def get_protocol_current_tvl(
         self, protocols: Union[str, List[str]], raw: bool = True
     ) -> Union[float, Dict[str, float], pd.DataFrame]:
-        """
-        Get current Total Value Locked (TVL) for the specified protocols.
+        """Get current Total Value Locked (TVL) for the specified protocols.
 
         Endpoint: /tvl/{protocol}
 
         Parameters:
-        - protocols (str or List[str], required): A list containing names of the desired protocol(s).
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+        - protocols (str or List[str], required): A list containing names of the desired
+          protocol(s).
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame. Defaults to True.
 
         Returns:
-        - float or Dict[str, float] or DataFrame: Raw data from the API or a transformed DataFrame.
+        - float or Dict[str, float] or DataFrame: Raw data from the API or a transformed
+          DataFrame.
             - If a single protocol is provided and raw=True, returns the TVL as a float.
-            - If multiple protocols are provided and raw=True, returns a dictionary mapping each protocol name to its TVL.
+            - If multiple protocols are provided and raw=True, returns a dictionary
+            mapping each protocol name to its TVL.
             - If raw=False, returns a DataFrame.
         """
         # Convert protocols to list if it's a string
@@ -347,13 +354,13 @@ class Llama:
     def get_all_chains_current_tvl(
         self, raw: bool = True
     ) -> Union[List[Dict], pd.DataFrame]:
-        """
-        Get current TVL of all chains.
+        """Get current TVL of all chains.
 
         Endpoint: /v2/chains
 
         Parameters:
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame. Defaults to True.
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
@@ -381,7 +388,8 @@ class Llama:
     # /block/{chain}/{timestamp}
 
     # --- Stablecoins --- #
-    # (self, assets: Union[int, List[int]], params: Dict = None, raw: bool = True) -> Union[List[Dict], pd.DataFrame]:
+    # (self, assets: Union[int, List[int]], params: Dict = None, raw: bool = True) ->
+    # Union[List[Dict], pd.DataFrame]:
 
     # /stablecoins
     # /stablecoincharts/all         def get_total_historical_stablecoin_mcap()
@@ -405,15 +413,16 @@ class Llama:
     def get_all_bridge_volume(
         self, params: Dict = None, raw: bool = True
     ) -> Union[Dict, pd.DataFrame]:
-        """
-        Get bridge data with summaries of recent bridge volumes.
+        """Get bridge data with summaries of recent bridge volumes.
 
         Endpoint: /bridges
 
         Parameters:
         - params (Dict, optional): Dictionary containing optional API parameters.
-            - includeChains: Whether to include current previous day volume breakdown by chain. Defaults to False.
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame.
+            - includeChains: Whether to include current previous day volume breakdown
+            by chain. Defaults to False.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame.
                                 Defaults to True.
 
         Returns:
@@ -430,14 +439,15 @@ class Llama:
     def get_bridge_volume(
         self, ids: List[str], raw: bool = True
     ) -> Union[Dict, pd.DataFrame]:
-        """
-        Get summary of bridge volume and volume breakdown by chain.
+        """Get summary of bridge volume and volume breakdown by chain.
 
         Endpoint: /bridges/{id}
 
         Parameters:
-        - ids (str or List[str], required): A list containing id's of the desired bridge(s).
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame.
+        - ids (str or List[str], required): A list containing id's of the desired
+        bridge(s).
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame.
                                 Defaults to True.
 
         Returns:
@@ -459,16 +469,17 @@ class Llama:
     def get_chain_bridge_volume(
         self, chains: List[str], params: Dict = None, raw: bool = True
     ) -> Union[Dict, pd.DataFrame]:
-        """
-        Get historical volumes for a bridge, chain, or bridge on a particular chain.
+        """Get historical volumes for a bridge, chain, or bridge on a particular chain.
 
         Endpoint: /bridgevolume/{chain}
 
         Parameters:
-        - chains (str or List[str], required): A list containing id's of the desired bridge(s).
+        - chains (str or List[str], required): A list containing id's of the desired
+        bridge(s).
         - params (Dict, optional): Dictionary containing optional API parameters.
             - id (int): Id's of the desired bridge(s).
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame.
                                 Defaults to True.
 
         Returns:
@@ -492,17 +503,19 @@ class Llama:
     def get_chain_bridge_day_volume(
         self, timestamp: int, chains: List[str], params: Dict = None, raw: bool = True
     ) -> Union[Dict, pd.DataFrame]:
-        """
-        Get a 24hr token and address volume breakdown for a bridge.
+        """Get a 24hr token and address volume breakdown for a bridge.
 
         Endpoint: /bridgedaystats/{timestamp}/{chain}
 
         Parameters:
-        - timestamp (int, required): Unix timestamp. Data returned will be for the 24hr period starting at 00:00 UTC that the timestamp lands in.
-        - chains (str or List[str], required): chain slug(s) — you can get these from get_chains().
+        - timestamp (int, required): Unix timestamp. Data returned will be for the 24hr
+        period starting at 00:00 UTC that the timestamp lands in.
+        - chains (str or List[str], required): chain slug(s) — you can get these from
+        get_chains().
         - params (Dict, optional): Dictionary containing optional API parameters.
             - id (int): Id's of the desired bridge(s).
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame.
                                 Defaults to True.
 
         Returns:
@@ -535,25 +548,25 @@ class Llama:
         params: Dict = None,
         raw: bool = True,
     ):
-        """
-        Get a 24hr token and address volume breakdown for a bridge.
+        """Get a 24hr token and address volume breakdown for a bridge.
 
         Endpoint: /bridgedaystats/{timestamp}/{chain}
 
         Parameters:
-        - timestamp (int, required): Unix timestamp. Data returned will be for the 24hr period starting at 00:00 UTC that the timestamp lands in.
+        - timestamp (int, required): Unix timestamp. Data returned will be for the 24hr
+        period starting at 00:00 UTC that the timestamp lands in.
         - chains (str, required): chain slug, you can get these from get_chains().
         - params (Dict, optional): Dictionary containing optional API parameters.
             - id (int): bridge ID, you can get these from get_bridges().
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame. Defaults to True.
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
         """
 
     def get_bridge_transactions(self, id: int, params: Dict = None, raw: bool = True):
-        """
-        Get all transactions for a bridge within a date range.
+        """Get all transactions for a bridge within a date range.
 
         Endpoint: /transactions/{id}
 
@@ -562,10 +575,14 @@ class Llama:
         - params (Dict, optional): Dictionary containing optional API parameters.
             - starttimestamp (int): start timestamp (Unix Timestamp) for date range
             - endtimestamp (int): end timestamp (Unix timestamp) for date range
-            - sourcechain (str): returns only transactions that are bridging from the specified source chain
-            - address (str): Returns only transactions with specified address as "from" or "to". Addresses are quried in the form {chain}:{address}, where chain is an identifier such as ethereum, bsc, polygon, avax... .
+            - sourcechain (str): returns only transactions that are bridging from the
+            specified source chain
+            - address (str): Returns only transactions with specified address as "from"
+            or "to". Addresses are quried in the form {chain}:{address}, where chain is
+            an identifier such as ethereum, bsc, polygon, avax... .
             - limit (int): limit to number of transactions returned, maximum is 6000
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame.
                                 Defaults to True.
 
         Returns:
@@ -575,17 +592,20 @@ class Llama:
     # --- Volumes --- #
 
     def get_dex_volume(self, params: Dict = None, raw: bool = True):
-        """
-        Get all dexs along wtih summaries of their volumes and dataType history data.
+        """Get all dexs along wtih summaries of their volumes and dataType history data.
 
         Endpoint: /overview/dexs
 
         Parameters:
         - params (Dict, optional): Dictionary containing optional API parameters.
-            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart from response. Defaults to False.
-            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken down chart from response. Defaults to False.
-            - dataType (string, optional): Desired data type. Available values are dailyVolume, totalVolume. Defaults to dailyVolume.
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart
+            from response. Defaults to False.
+            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken
+            down chart from response. Defaults to False.
+            - dataType (string, optional): Desired data type. Available values are
+            dailyVolume, totalVolume. Defaults to dailyVolume.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame. Defaults to True.
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
@@ -618,7 +638,8 @@ class Llama:
 
                 return pd.DataFrame(records)
 
-            # Default return 'totalDataChart' if raw = False and params.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
+            # Default return 'totalDataChart' if raw = False and
+            # params.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
             else:
                 return pd.DataFrame(
                     response["totalDataChart"], columns=["date", "volume"]
@@ -627,18 +648,22 @@ class Llama:
     def get_chain_dex_volume(
         self, chains: Union[str, List[str]], params: Dict = None, raw: bool = True
     ):
-        """
-        Get all dexs along with summaries of their volumes and dataType history data filtering by chain.
+        """Get all dexs along with summaries of their volumes and dataType history data
+        filtering by chain.
 
         Endpoint: /overview/dexs/{chain}
 
         Parameters:
         - chains (str, required): chain slug, you can get these from get_chains().
         - params (Dict, optional): Dictionary containing optional API parameters.
-            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart from response. Defaults to False.
-            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken down chart from response. Defaults to False.
-            - dataType (string, optional): Desired data type. Available values are dailyVolume, totalVolume. Defaults to dailyVolume.
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart
+            from response. Defaults to False.
+            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken
+            down chart from response. Defaults to False.
+            - dataType (string, optional): Desired data type. Available values are
+            dailyVolume, totalVolume. Defaults to dailyVolume.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame. Defaults to True.
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
@@ -656,7 +681,8 @@ class Llama:
                 and response.get("totalDataChartBreakdown") is None
             ):
                 raise ValueError(
-                    f"No data available for hain: {chain} with dataType: {params.get('dataType', 'dailyVolume')}"
+                    f"No data available for hain: {chain} "
+                    f"with dataType: {params.get('dataType', 'dailyVolume')}"
                 )
 
             if raw:
@@ -691,7 +717,8 @@ class Llama:
                     dfs.append(self._clean_chain_name(df))
 
                 else:
-                    # Default return 'totalDataChart' if raw = False and params.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
+                    # Default return 'totalDataChart' if raw = False and
+                    # prms.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
                     df = pd.DataFrame(
                         response["totalDataChart"], columns=["date", "volume"]
                     )
@@ -706,18 +733,22 @@ class Llama:
     def get_protocol_dex_volume(
         self, protocols: Union[str, List[str]], params: Dict = None, raw: bool = True
     ) -> Union[List[Dict], pd.DataFrame]:
-        """
-        Get summary of protocol dex volume with historical data.
+        """Get summary of protocol dex volume with historical data.
 
         Endpoint: /summary/dexs/{protocol}
 
         Parameters:
-        - protocols (str or List[str], required): protocol slug(s) — you can get these from get_protocols().
+        - protocols (str or List[str], required): protocol slug(s) — you can get these
+        from get_protocols().
         - params (Dict, optional): Dictionary containing optional API parameters.
-            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart from response. Defaults to False.
-            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken down chart from response. Defaults to False.
-            - dataType (string, optional): Desired data type. Available values are dailyVolume, totalVolume. Defaults to dailyVolume.
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart
+            from response. Defaults to False.
+            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken
+            down chart from response. Defaults to False.
+            - dataType (string, optional): Desired data type. Available values are
+            dailyVolume, totalVolume. Defaults to dailyVolume.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame. Defaults to True.
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
@@ -734,7 +765,8 @@ class Llama:
                 and response.get("totalDataChartBreakdown") is None
             ):
                 raise ValueError(
-                    f"No data available for dex protocol: {protocol} with dataType: {params.get('dataType', 'dailyVolume')}"
+                    f"No data available for dex protocol: {protocol} "
+                    f"with dataType: {params.get('dataType', 'dailyVolume')}"
                 )
             results[protocol] = response
 
@@ -787,17 +819,21 @@ class Llama:
             return pd.DataFrame(all_data)
 
     def get_perps_volume(self, params: Dict = None, raw: bool = True):
-        """
-        Get all perps dexs along wtih summaries of their volumes and dataType history data.
+        """Get all perps dexs along wtih summaries of their volumes and dataType history
+        data.
 
         Endpoint: /overview/derivatives
 
         Parameters:
         - params (Dict, optional): Dictionary containing optional API parameters.
-            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart from response. Defaults to False.
-            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken down chart from response. Defaults to False.
-            - dataType (string, optional): Desired data type. Available values are dailyVolume, totalVolume. Defaults to dailyVolume.
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart
+            from response. Defaults to False.
+            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken
+            down chart from response. Defaults to False.
+            - dataType (string, optional): Desired data type. Available values are
+            dailyVolume, totalVolume. Defaults to dailyVolume.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame. Defaults to True.
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
@@ -830,7 +866,8 @@ class Llama:
 
                 return pd.DataFrame(records)
 
-            # Default return 'totalDataChart' if raw = False and params.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
+            # Default return 'totalDataChart' if raw = False and
+            # params.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
             else:
                 return pd.DataFrame(
                     response["totalDataChart"], columns=["date", "volume"]
@@ -839,18 +876,22 @@ class Llama:
     def get_chain_perps_volume(
         self, chains: Union[str, List[str]], params: Dict = None, raw: bool = True
     ):
-        """
-        Get all perps dexs along with summaries of their volumes and dataType history data filtering by chain.
+        """Get all perps dexs along with summaries of their volumes and dataType history
+        data filtering by chain.
 
         Endpoint: /overview/derivatives/{chain}
 
         Parameters:
         - chains (str, required): chain slug, you can get these from get_chains().
         - params (Dict, optional): Dictionary containing optional API parameters.
-            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart from response. Defaults to False.
-            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken down chart from response. Defaults to False.
-            - dataType (string, optional): Desired data type. Available values are dailyVolume, totalVolume. Defaults to dailyVolume.
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart
+            from response. Defaults to False.
+            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken
+            down chart from response. Defaults to False.
+            - dataType (string, optional): Desired data type. Available values are
+            dailyVolume, totalVolume. Defaults to dailyVolume.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame. Defaults to True.
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
@@ -870,7 +911,8 @@ class Llama:
                 and response.get("totalDataChartBreakdown") is None
             ):
                 raise ValueError(
-                    f"No data available for chain: {chain} with dataType: {params.get('dataType', 'dailyVolume')}"
+                    f"No data available for chain: {chain} "
+                    f"with dataType: {params.get('dataType', 'dailyVolume')}"
                 )
 
             if raw:
@@ -905,7 +947,8 @@ class Llama:
                     dfs.append(self._clean_chain_name(df))
 
                 else:
-                    # Default return 'totalDataChart' if raw = False and params.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
+                    # Default return 'totalDataChart' if raw = False and
+                    # prms.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
                     df = pd.DataFrame(
                         response["totalDataChart"], columns=["date", "volume"]
                     )
@@ -920,18 +963,22 @@ class Llama:
     def get_protocol_perps_volume(
         self, protocols: Union[str, List[str]], params: Dict = None, raw: bool = True
     ) -> Union[List[Dict], pd.DataFrame]:
-        """
-        Get summary of protocol perps dex volume with historical data.
+        """Get summary of protocol perps dex volume with historical data.
 
         Endpoint: /summary/derivatives/{protocol}
 
         Parameters:
-        - protocols (str or List[str], required): protocol slug(s) — you can get these from get_protocols().
+        - protocols (str or List[str], required): protocol slug(s) — you can get these
+        from get_protocols().
         - params (Dict, optional): Dictionary containing optional API parameters.
-            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart from response. Defaults to False.
-            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken down chart from response. Defaults to False.
-            - dataType (string, optional): Desired data type. Available values are dailyVolume, totalVolume. Defaults to dailyVolume.
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart
+            from response. Defaults to False.
+            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken
+            down chart from response. Defaults to False.
+            - dataType (string, optional): Desired data type. Available values are
+            dailyVolume, totalVolume. Defaults to dailyVolume.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame. Defaults to True.
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
@@ -950,7 +997,8 @@ class Llama:
                 and response.get("totalDataChartBreakdown") is None
             ):
                 raise ValueError(
-                    f"No data available for perps protocol: {protocol} with dataType: {params.get('dataType', 'dailyVolume')}"
+                    f"No data available for perps protocol: {protocol} "
+                    f"with dataType: {params.get('dataType', 'dailyVolume')}"
                 )
             results[protocol] = response
 
@@ -1003,17 +1051,22 @@ class Llama:
             return pd.DataFrame(all_data)
 
     def get_options_volume(self, params: Dict = None, raw: bool = True):
-        """
-        Get all options dexs along wtih summaries of their volumes and dataType history data.
+        """Get all options dexs along wtih summaries of their volumes and dataType
+        history data.
 
         Endpoint: /overview/options
 
         Parameters:
         - params (Dict, optional): Dictionary containing optional API parameters.
-            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart from response. Defaults to False.
-            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken down chart from response. Defaults to False.
-            - dataType (string, optional): Desired data type. Available values are dailyPremiumVolume, dailyNotionalVolume, totalPremiumVolume, or totalNotionalVolume. Defaults to dailyNotionalVolume.
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart
+            from response. Defaults to False.
+            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken
+            down chart from response. Defaults to False.
+            - dataType (string, optional): Desired data type. Available values are
+            dailyPremiumVolume, dailyNotionalVolume, totalPremiumVolume, or
+            totalNotionalVolume. Defaults to dailyNotionalVolume.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame. Defaults to True.
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
@@ -1046,7 +1099,8 @@ class Llama:
 
                 return pd.DataFrame(records)
 
-            # Default return 'totalDataChart' if raw = False and params.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
+            # Default return 'totalDataChart' if raw = False and
+            # params.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
             else:
                 return pd.DataFrame(
                     response["totalDataChart"], columns=["date", "volume"]
@@ -1055,18 +1109,23 @@ class Llama:
     def get_chain_options_volume(
         self, chains: Union[str, List[str]], params: Dict = None, raw: bool = True
     ):
-        """
-        Get all options dexs along with summaries of their volumes and dataType history data filtering by chain.
+        """Get all options dexs along with summaries of their volumes and dataType
+        history data filtering by chain.
 
         Endpoint: /overview/options/{chain}
 
         Parameters:
         - chains (str, required): chain slug, you can get these from get_chains().
         - params (Dict, optional): Dictionary containing optional API parameters.
-            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart from response. Defaults to False.
-            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken down chart from response. Defaults to False.
-            - dataType (string, optional): Desired data type. Available values are dailyPremiumVolume, dailyNotionalVolume, totalPremiumVolume, or totalNotionalVolume. Defaults to dailyNotionalVolume.
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart
+            from response. Defaults to False.
+            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken
+            down chart from response. Defaults to False.
+            - dataType (string, optional): Desired data type. Available values are
+            dailyPremiumVolume, dailyNotionalVolume, totalPremiumVolume, or
+            totalNotionalVolume. Defaults to dailyNotionalVolume.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame. Defaults to True.
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
@@ -1084,7 +1143,8 @@ class Llama:
                 and response.get("totalDataChartBreakdown") is None
             ):
                 raise ValueError(
-                    f"No data available for chain: {chain} with dataType: {params.get('dataType', 'dailyNotionalVolume')}"
+                    f"No data available for chain: {chain} "
+                    f"with dataType: {params.get('dataType', 'dailyNotionalVolume')}"
                 )
 
             if raw:
@@ -1119,7 +1179,8 @@ class Llama:
                     dfs.append(self._clean_chain_name(df))
 
                 else:
-                    # Default return 'totalDataChart' if raw = False and params.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
+                    # Default return 'totalDataChart' if raw = False and
+                    # prms.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
                     df = pd.DataFrame(
                         response["totalDataChart"], columns=["date", "volume"]
                     )
@@ -1134,16 +1195,18 @@ class Llama:
     def get_protocol_options_volume(
         self, protocols: Union[str, List[str]], params: Dict = None, raw: bool = True
     ) -> Union[List[Dict], pd.DataFrame]:
-        """
-        Get summary of protocol options dex volume with historical data.
+        """Get summary of protocol options dex volume with historical data.
 
         Endpoint: /summary/options/{protocol}
 
         Parameters:
-        - protocols (str or List[str], required): protocol slug(s) — you can get these from get_protocols().
+        - protocols (str or List[str], required): protocol slug(s) — you can get these
+        from get_protocols().
         - params (Dict, optional): Dictionary containing optional API parameters.
-            - dataType (string, optional): Desired data type. Available values are totalFees, dailyFees, totalRevenue, dailyRevenue. Defaults to dailyFees.
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+            - dataType (string, optional): Desired data type. Available values are
+            totalFees, dailyFees, totalRevenue, dailyRevenue. Defaults to dailyFees.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame. Defaults to True.
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
@@ -1162,7 +1225,8 @@ class Llama:
                 and response.get("totalDataChartBreakdown") is None
             ):
                 raise ValueError(
-                    f"No data available for options protocol: {protocol} with dataType: {params.get('dataType', 'dailyFees')}"
+                    f"No data available for options protocol: {protocol} "
+                    f"with dataType: {params.get('dataType', 'dailyFees')}"
                 )
             results[protocol] = response
 
@@ -1219,17 +1283,21 @@ class Llama:
     def get_fees_revenue(
         self, params: Dict = None, raw: bool = True
     ) -> Union[List[Dict], pd.DataFrame]:
-        """
-        Get all protocols along with summaries of their fees and revenue and dataType history data.
+        """Get all protocols along with summaries of their fees and revenue and dataType
+        history data.
 
         Endpoint: /overview/fees
 
         Parameters:
         - params (Dict, optional): Dictionary containing optional API parameters.
-            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart from response. Defaults to False.
-            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken down chart from response. Defaults to False.
-            - dataType (string, optional): Desired data type. Available values are totalFees, dailyFees, totalRevenue, dailyRevenue. Defaults to dailyFees.
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart
+            from response. Defaults to False.
+            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken
+            down chart from response. Defaults to False.
+            - dataType (string, optional): Desired data type. Available values are
+            totalFees, dailyFees, totalRevenue, dailyRevenue. Defaults to dailyFees.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame. Defaults to True.
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
@@ -1271,7 +1339,8 @@ class Llama:
 
                 return pd.DataFrame(records)
 
-            # Default return 'totalDataChart' if raw = False and params.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
+            # Default return 'totalDataChart' if raw = False and
+            # params.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
             else:
                 return pd.DataFrame(
                     response["totalDataChart"], columns=["date", fees_rev_col_name]
@@ -1280,18 +1349,23 @@ class Llama:
     def get_chain_fees_revenue(
         self, chains: Union[str, List[str]], params: Dict = None, raw: bool = True
     ) -> Union[List[Dict], pd.DataFrame]:
-        """
-        Get all protocols along with summaries of their fees and revenue and dataType history data by chain.
+        """Get all protocols along with summaries of their fees and revenue and dataType
+        history data by chain.
 
         Endpoint: /overview/fees/{chain}
 
         Parameters:
-        - chains (str or List[str], required): chain slug(s) — you can get these from get_chains().
+        - chains (str or List[str], required): chain slug(s) — you can get these from
+        get_chains().
         - params (Dict, optional): Dictionary containing optional API parameters.
-            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart from response. Defaults to False.
-            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken down chart from response. Defaults to False.
-            - dataType (string, optional): Desired data type. Available values are totalFees, dailyFees, totalRevenue, dailyRevenue. Defaults to dailyFees.
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+            - excludeTotalDataChart (bool, optional): True to exclude aggregated chart
+            from response. Defaults to False.
+            - excludeTotalDataChartBreakdown (bool, optional): True to exclude broken
+            down chart from response. Defaults to False.
+            - dataType (string, optional): Desired data type. Available values are
+            totalFees, dailyFees, totalRevenue, dailyRevenue. Defaults to dailyFees.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame. Defaults to True.
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
@@ -1309,7 +1383,8 @@ class Llama:
                 and response.get("totalDataChartBreakdown") is None
             ):
                 raise ValueError(
-                    f"No data available for chain: {chain} with dataType: {params.get('dataType', 'dailyNotionalVolume')}"
+                    f"No data available for chain: {chain} "
+                    f"with dataType: {params.get('dataType', 'dailyNotionalVolume')}"
                 )
 
             if raw:
@@ -1351,7 +1426,8 @@ class Llama:
                     dfs.append(self._clean_chain_name(df))
 
                 else:
-                    # Default return 'totalDataChart' if raw = False and params.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
+                    # Default return 'totalDataChart' if raw = False and
+                    # prms.excludeTotalDataChart = params.excludeTotalDataChartBreakdown
                     df = pd.DataFrame(
                         response["totalDataChart"], columns=["date", fees_rev_col_name]
                     )
@@ -1366,16 +1442,18 @@ class Llama:
     def get_protocol_fees_revenue(
         self, protocols: Union[str, List[str]], params: Dict = None, raw: bool = True
     ) -> Union[List[Dict], pd.DataFrame]:
-        """
-        Get summary of protocol fees and revenue with historical data.
+        """Get summary of protocol fees and revenue with historical data.
 
         Endpoint: /summary/fees/{protocol}
 
         Parameters:
-        - protocols (str or List[str], required): Protocol slug(s) — you can get these from get_protocols().
+        - protocols (str or List[str], required): Protocol slug(s) — you can get these
+        from get_protocols().
         - params (Dict, optional): Dictionary containing optional API parameters.
-            - dataType (string, optional): Desired data type. Available values are totalFees, dailyFees, totalRevenue, dailyRevenue. Defaults to dailyFees.
-        - raw (bool, optional): If True, returns raw data. If False, returns a transformed DataFrame. Defaults to True.
+            - dataType (string, optional): Desired data type. Available values are
+            totalFees, dailyFees, totalRevenue, dailyRevenue. Defaults to dailyFees.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame. Defaults to True.
 
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
@@ -1392,16 +1470,17 @@ class Llama:
                 and response.get("totalDataChartBreakdown") is None
             ):
                 raise ValueError(
-                    f"No data available for protocol: {protocol} with dataType: {params.get('dataType', 'dailyFees')}"
+                    f"No data available for protocol: {protocol} "
+                    f"with dataType: {params.get('dataType', 'dailyFees')}"
                 )
             results[protocol] = response
 
         if raw:
             return results
         else:
-            # the /summary/fees/{protocol} endpoint doesn't actually have a flag for excludeTotalDataChart or
-            # excludeTotalDataChartBreakdown like the volume endpoints do, but the functionality works the same
-            # here even without it.
+            # the /summary/fees/{protocol} endpoint doesn't actually have a flag for
+            # excludeTotalDataChart or excludeTotalDataChartBreakdown like the volume
+            # endpoints do, but the functionality works the same here even without it.
 
             dataType = params.get("dataType", "dailyFees")
             fees_rev_col_name = (

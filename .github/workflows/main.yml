@@ -8,12 +8,10 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ['3.8', '3.9', '3.10', '3.11']
-
     steps:
     - uses: actions/checkout@v3
 
@@ -21,45 +19,93 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
-    
+
     - name: Install Poetry and dependencies
       run: |
         python -m pip install --upgrade pip
         pip install poetry
         poetry install
-  
-    # - name: Format with black
-    #   run: poetry run black --check .
-
-    # - name: Lint with ruff
-    #   run: poetry run ruff .
 
     - name: Test with pytest
       run: poetry run pytest
 
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: chartboost/ruff-action@v1
-      - uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          commit_message: 'style fixes by ruff'
-    # runs-on: ubuntu-latest 
-    # steps:
-    # - uses: actions/checkout@v2
-    # - uses: actions/setup-python@v2
-    # - uses: chartboost/ruff-action@v1
-    #   with:
-    #     args: --check .
-    #     fix_args: --fix .
-    #     config: .ruff.toml
-    # - uses: stefanzweifel/git-auto-commit-action@v4
-    #   with:
-    #     commit_message: 'style fixes by ruff'
-  
-  fmt:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: psf/black@stable
+    - name: Format with black
+      run: poetry run black --check .
+
+    - name: Lint with ruff
+      run: poetry run ruff check .
+
+
+
+
+
+
+
+# name: Python Package CI
+
+# on:
+#   push:
+#     branches: [ master ]
+#   pull_request:
+#     branches: [ master ]
+
+# jobs:
+#   test:
+#     name: Test on ${{ matrix.python-version }}
+#     runs-on: ubuntu-latest
+#     strategy:
+#       matrix:
+#         python-version: ['3.8', '3.9', '3.10', '3.11']
+#     steps:
+#     - uses: actions/checkout@v3
+#     - name: Set up Python ${{ matrix.python-version }}
+#       uses: actions/setup-python@v3
+#       with:
+#         python-version: ${{ matrix.python-version }}
+#     - name: Install Poetry and dependencies
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install poetry
+#         poetry install
+#     - name: Test with pytest
+#       run: poetry run pytest
+
+#   format:
+#     name: Test on ${{ matrix.python-version }}
+#     runs-on: ubuntu-latest
+#     strategy:
+#       matrix:
+#         python-version: ['3.8', '3.9', '3.10', '3.11']
+#     steps:
+#     - uses: actions/checkout@v3
+#     - name: Set up Python ${{ matrix.python-version }}
+#       uses: actions/setup-python@v3
+#       with:
+#         python-version: ${{ matrix.python-version }}
+#     - name: Install Poetry and dependencies
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install poetry
+#         poetry install
+#     - name: Format with black
+#       run: poetry run black --check .
+
+#   lint:
+#     name: Test on ${{ matrix.python-version }}
+#     runs-on: ubuntu-latest
+#     strategy:
+#       matrix:
+#         python-version: ['3.8', '3.9', '3.10', '3.11']
+#     steps:
+#     - uses: actions/checkout@v3
+#     - name: Set up Python ${{ matrix.python-version }}
+#       uses: actions/setup-python@v3
+#       with:
+#         python-version: ${{ matrix.python-version }}
+#     - name: Install Poetry and dependencies
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install poetry
+#         poetry install
+#     - name: Lint with ruff
+#       run: poetry run ruff check .
