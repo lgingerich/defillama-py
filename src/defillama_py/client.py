@@ -1,26 +1,14 @@
-import requests
-import pandas as pd
-from typing import Union, List, Dict
-from urllib.parse import urlencode
-
 # TO DO:
 
-# add functionality for large scale data extraction (i.e. get historical tvl of all dapps across all chains)
 # packaged transformations should return only critical data (no metadata). for a tvl endpoint, only return tvl
 # handle potential rate limiting: 500 requests / min
 # check that function inputs (chains, protocols, coins, etc.) exist
 # check is instance and type check matching
 # lots of work to do on error handling, type checking, type enforcement, etc.
-# urllib for proper string encoding?
-# do i need get_bridges() or can I just use get_protocols()?
-    # should add something like this, bc if i only want to get bridges, it's inconvenient to look through all protocols
-    # also need to do this for dexs, perps, etc.
-# handle required vs optional params
 # make sure the test paths are accessed properly for when anyone new downloads and runs the code
 # follow this logic for all functions: exclude_chart = params.get("excludeTotalDataChart", False)
-# what happens if the first protocol/chain in my input list is shorter than the latter options?
+# what happens if the first protocol/chain in my input list is shorter than the later options?
 # maybe add dynamic column names. can reference get_protocol_fees_revenue() implentation
-# need better packaging, i.e. pyproject.toml
 
 # technically returning a list of Dicts in many cases, may need to change "Returns" comment under each function
 # `params` only ever contains optional parameters. required parameters are explicity called in the function definition.
