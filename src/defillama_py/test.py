@@ -65,20 +65,21 @@ obj = Llama()
 # })
 
 
-
-df = obj.get_chain_fees_revenue('ethereum', raw=False, params = {
-    "excludeTotalDataChart": True,
-    "excludeTotalDataChartBreakdown": False,
-    "dataType": "totalFees"
-})
+df = obj.get_chain_fees_revenue(
+    "ethereum",
+    raw=False,
+    params={
+        "excludeTotalDataChart": True,
+        "excludeTotalDataChartBreakdown": False,
+        "dataType": "totalFees",
+    },
+)
 
 
 # df = obj.get_bridges(params={"includeChains": False}, raw=False)
 # df = obj.get_bridge_transactions(id)
 
 
-
 print(df)
 # print(str(df)[:1000])
 # df.to_csv('test.csv')
-
