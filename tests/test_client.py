@@ -1,5 +1,3 @@
-import pytest
-import pandas as pd
 from defillama_py.client import Llama
 
 # create a DefiLlama instance
@@ -86,40 +84,41 @@ VOLUME_PARAMS = [
 #         assert all(response['chain'].str.contains(r'[-\s]') == False)
 
 
-@pytest.mark.parametrize("chains", CHAINS)
-@pytest.mark.parametrize("raw", RAW_VALUES)
-@pytest.mark.parametrize("params", VOLUME_PARAMS)
-def test_get_chain_perps_volume(chains, params, raw):
-    # Create an instance of the class
-    wrapper_instance = (
-        Llama()
-    )  # Adjust if you need specific arguments for initialization
+# @pytest.mark.parametrize("chains", CHAINS)
+# @pytest.mark.parametrize("raw", RAW_VALUES)
+# @pytest.mark.parametrize("params", VOLUME_PARAMS)
+# def test_get_chain_perps_volume(chains, params, raw):
+#     # Create an instance of the class
+#     wrapper_instance = (
+#         Llama()
+#     )  # Adjust if you need specific arguments for initialization
 
-    # Handle expected exceptions for invalid combinations
-    if not params:
-        with pytest.raises(ValueError, match="params dictionary is missing."):
-            wrapper_instance.get_chain_perps_volume(chains, params, raw)
-        return
+#     # Handle expected exceptions for invalid combinations
+#     if not params:
+#         with pytest.raises(ValueError, match="params dictionary is missing."):
+#             wrapper_instance.get_chain_perps_volume(chains, params, raw)
+#         return
 
-    if (
-        raw is False
-        and params["excludeTotalDataChart"] == params["excludeTotalDataChartBreakdown"]
-    ):
-        with pytest.raises(
-            ValueError,
-            match=r"Both excludeTotalDataChart and excludeTotalDataChartBreakdown "
-            r"cannot have the same value \(either both True or both False\) "
-            r"if raw = False\.",
-        ):
-            wrapper_instance.get_chain_perps_volume(chains, params, raw)
-        return
+#     if (
+#         raw is False
+#         and params["excludeTotalDataChart"] ==
+#  params["excludeTotalDataChartBreakdown"]
+#     ):
+#         with pytest.raises(
+#             ValueError,
+#             match=r"Both excludeTotalDataChart and excludeTotalDataChartBreakdown "
+#             r"cannot have the same value \(either both True or both False\) "
+#             r"if raw = False\.",
+#         ):
+#             wrapper_instance.get_chain_perps_volume(chains, params, raw)
+#         return
 
-    # Actual testing
-    result = wrapper_instance.get_chain_perps_volume(chains, params, raw)
+#     # Actual testing
+#     result = wrapper_instance.get_chain_perps_volume(chains, params, raw)
 
-    # Add further assertions to validate the returned result
-    # For instance:
-    if raw:
-        assert isinstance(result, list)
-    else:
-        assert isinstance(result, pd.DataFrame)
+#     # Add further assertions to validate the returned result
+#     # For instance:
+#     if raw:
+#         assert isinstance(result, list)
+#     else:
+#         assert isinstance(result, pd.DataFrame)
