@@ -107,7 +107,9 @@ def test_get_chain_perps_volume(chains, params, raw):
     ):
         with pytest.raises(
             ValueError,
-            match=r"Both excludeTotalDataChart and excludeTotalDataChartBreakdown cannot have the same value \(either both True or both False\) if raw = False\.",
+            match=r"Both excludeTotalDataChart and excludeTotalDataChartBreakdown "
+            r"cannot have the same value \(either both True or both False\) "
+            r"if raw = False\.",
         ):
             wrapper_instance.get_chain_perps_volume(chains, params, raw)
         return

@@ -28,11 +28,38 @@ jobs:
         pip install poetry
         poetry install
   
-    - name: Format with black
-      run: poetry run black --check .
+    # - name: Format with black
+    #   run: poetry run black --check .
 
-    - name: Lint with ruff
-      run: poetry run ruff .
+    # - name: Lint with ruff
+    #   run: poetry run ruff .
 
     - name: Test with pytest
       run: poetry run pytest
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: chartboost/ruff-action@v1
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: 'style fixes by ruff'
+    # runs-on: ubuntu-latest 
+    # steps:
+    # - uses: actions/checkout@v2
+    # - uses: actions/setup-python@v2
+    # - uses: chartboost/ruff-action@v1
+    #   with:
+    #     args: --check .
+    #     fix_args: --fix .
+    #     config: .ruff.toml
+    # - uses: stefanzweifel/git-auto-commit-action@v4
+    #   with:
+    #     commit_message: 'style fixes by ruff'
+  
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: psf/black@stable
