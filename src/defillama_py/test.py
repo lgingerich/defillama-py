@@ -9,7 +9,7 @@ obj = Llama()
 # df = obj.get_pools()
 
 # df = obj.get_all_protocols_current_tvl(raw=False)
-# df = obj.get_protocol_historical_tvl(protocols='velodrome', raw=False)
+# df = obj.get_protocol_historical_tvl(protocols="velodrome", raw=False)
 # df = obj.get_all_chains_historical_tvl(raw=False)
 # df = obj.get_protocol_current_tvl(['velodrome'])
 
@@ -65,21 +65,22 @@ obj = Llama()
 # })
 
 
-df = obj.get_chain_fees_revenue(
-    "ethereum",
-    raw=False,
-    params={
-        "excludeTotalDataChart": True,
-        "excludeTotalDataChartBreakdown": False,
-        "dataType": "totalFees",
-    },
-)
+# df = obj.get_chain_fees_revenue(
+#     "ethereum",
+#     raw=False,
+#     params={
+#         "excludeTotalDataChart": True,
+#         "excludeTotalDataChartBreakdown": False,
+#         "dataType": "totalFees",
+#     },
+# )
 
 
 # df = obj.get_bridges(params={"includeChains": False}, raw=False)
 # df = obj.get_bridge_transactions(id)
 
-
+# df = obj.get_bridge_volume(["1", "2"], raw=True)
+df = obj.get_chain_bridge_volume(["ethereum", "arbitrum"], raw=False)
 print(df)
 # print(str(df)[:1000])
 # df.to_csv('test.csv')

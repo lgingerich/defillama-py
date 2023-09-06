@@ -4,6 +4,7 @@ TO DO:
 packaged transformations should return only critical data (no metadata).
     for a tvl endpoint, only return tvl
 handle potential rate limiting: 500 requests / min
+handle authentication
 check that function inputs (chains, protocols, coins, etc.) exist
 check is instance and type check matching
 lots of work to do on error handling, type checking, etc.
@@ -435,13 +436,12 @@ class Llama:
         else:
             return pd.DataFrame(response["bridges"])
 
-    # still need to handle raw=False
     def get_bridge_volume(
         self, ids: List[str], raw: bool = True
     ) -> Union[Dict, pd.DataFrame]:
         """Get summary of bridge volume and volume breakdown by chain.
 
-        Endpoint: /bridges/{id}
+        Endpoint: /bridge/{id}
 
         Parameters:
         - ids (str or List[str], required): A list containing id's of the desired
@@ -456,16 +456,69 @@ class Llama:
         if isinstance(ids, str):
             ids = [ids]
 
+        results = {}
+        dfs = []
+
+        for id in ids:
+            response = self._get("BRIDGES", endpoint=f"/bridge/{id}")
+
+            if raw:
+                results[id] = response
+            else:
+                flattened_data = []
+
+                chains = list(response["chainBreakdown"].keys())
+                for chain in chains:
+                    chain_data = response["chainBreakdown"][chain]
+                    flattened_chain_data = {
+                        "bridge_id": response["id"],
+                        "bridge_name": response["displayName"],
+                        "chain": chain,
+                        "lastHourlyVolume": chain_data["lastHourlyVolume"],
+                        "currentDayVolume": chain_data["currentDayVolume"],
+                        "lastDailyVolume": chain_data["lastDailyVolume"],
+                        "dayBeforeLastVolume": chain_data["dayBeforeLastVolume"],
+                        "weeklyVolume": chain_data["weeklyVolume"],
+                        "monthlyVolume": chain_data["monthlyVolume"],
+                        "lastHourlyTxs_deposits": chain_data["lastHourlyTxs"][
+                            "deposits"
+                        ],
+                        "lastHourlyTxs_withdrawals": chain_data["lastHourlyTxs"][
+                            "withdrawals"
+                        ],
+                        "currentDayTxs_deposits": chain_data["currentDayTxs"][
+                            "deposits"
+                        ],
+                        "currentDayTxs_withdrawals": chain_data["currentDayTxs"][
+                            "withdrawals"
+                        ],
+                        "prevDayTxs_deposits": chain_data["prevDayTxs"]["deposits"],
+                        "prevDayTxs_withdrawals": chain_data["prevDayTxs"][
+                            "withdrawals"
+                        ],
+                        "dayBeforeLastTxs_deposits": chain_data["dayBeforeLastTxs"][
+                            "deposits"
+                        ],
+                        "dayBeforeLastTxs_withdrawals": chain_data["dayBeforeLastTxs"][
+                            "withdrawals"
+                        ],
+                        "weeklyTxs_deposits": chain_data["weeklyTxs"]["deposits"],
+                        "weeklyTxs_withdrawals": chain_data["weeklyTxs"]["withdrawals"],
+                        "monthlyTxs_deposits": chain_data["monthlyTxs"]["deposits"],
+                        "monthlyTxs_withdrawals": chain_data["monthlyTxs"][
+                            "withdrawals"
+                        ],
+                    }
+                    flattened_data.append(flattened_chain_data)
+
+                df = pd.DataFrame(flattened_data)
+                dfs.append(df)
+
         if raw:
-            if len(ids) == 1:
-                return self._get("BRIDGES", endpoint=f"/bridges/{ids[0]}")
-
-            results = {}
-            for id in ids:
-                results[id] = self._get("BRIDGES", endpoint=f"/bridges/{ids}")
             return results
+        else:
+            return pd.concat(dfs, ignore_index=True)
 
-    # still need to handle raw=False
     def get_chain_bridge_volume(
         self, chains: List[str], params: Dict = None, raw: bool = True
     ) -> Union[Dict, pd.DataFrame]:
@@ -490,14 +543,40 @@ class Llama:
 
         if raw:
             if len(chains) == 1:
-                return self._get("BRIDGES", endpoint=f"/bridgevolume/{chains[0]}")
+                return self._get(
+                    "BRIDGES", endpoint=f"/bridgevolume/{chains[0]}", params=params
+                )
 
             results = {}
             for chain in chains:
                 results[chain] = self._get(
-                    "BRIDGES", endpoint=f"/bridgevolume/{chains}"
+                    "BRIDGES", endpoint=f"/bridgevolume/{chain}", params=params
                 )
             return results
+
+        else:
+            results = []
+
+            for chain in chains:
+                chain_data = self._get(
+                    "BRIDGES", endpoint=f"/bridgevolume/{chain}", params=params
+                )
+                for entry in chain_data:
+                    entry["chain"] = chain
+                    results.append(entry)
+
+            df = pd.DataFrame(results)
+            df = df[
+                [
+                    "date",
+                    "chain",
+                    "depositUSD",
+                    "withdrawUSD",
+                    "depositTxs",
+                    "withdrawTxs",
+                ]
+            ]
+            return self._clean_chain_name(df)
 
     # still need to handle raw=False
     def get_chain_bridge_day_volume(
@@ -538,8 +617,6 @@ class Llama:
                 )
             return results
         # doesn't work for multiple chains
-
-    # /bridgedaystats/{timestamp}/{chain}
 
     def get_bridge_day_stats(
         self,
