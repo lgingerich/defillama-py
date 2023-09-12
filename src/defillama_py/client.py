@@ -158,7 +158,6 @@ class Llama:
         return results
 
     # --- TVL --- #
-    # all tvl endpoints manually checked. seem good, need to write tests still
 
     def get_all_protocols_current_tvl(
         self, raw: bool = True
@@ -408,6 +407,7 @@ class Llama:
 
     # /fetch/signature
     # /fetch/contract/{chain}/{address}
+    
 
     # --- Bridges --- #
 
@@ -435,6 +435,7 @@ class Llama:
             return response
         else:
             return pd.DataFrame(response["bridges"])
+
 
     def get_bridge_volume(
         self, ids: List[str], raw: bool = True
@@ -519,6 +520,7 @@ class Llama:
         else:
             return pd.concat(dfs, ignore_index=True)
 
+
     def get_chain_bridge_volume(
         self, chains: List[str], params: Dict = None, raw: bool = True
     ) -> Union[Dict, pd.DataFrame]:
@@ -578,45 +580,6 @@ class Llama:
             ]
             return self._clean_chain_name(df)
 
-    # still need to handle raw=False
-    def get_chain_bridge_day_volume(
-        self, timestamp: int, chains: List[str], params: Dict = None, raw: bool = True
-    ) -> Union[Dict, pd.DataFrame]:
-        """Get a 24hr token and address volume breakdown for a bridge.
-
-        Endpoint: /bridgedaystats/{timestamp}/{chain}
-
-        Parameters:
-        - timestamp (int, required): Unix timestamp. Data returned will be for the 24hr
-        period starting at 00:00 UTC that the timestamp lands in.
-        - chains (str or List[str], required): chain slug(s) — you can get these from
-        get_chains().
-        - params (Dict, optional): Dictionary containing optional API parameters.
-            - id (int): Id's of the desired bridge(s).
-        - raw (bool, optional): If True, returns raw data. If False, returns a
-        transformed DataFrame.
-                                Defaults to True.
-
-        Returns:
-        - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
-        """
-
-        if isinstance(chains, str):
-            chains = [chains]
-
-        if raw:
-            if len(chains) == 1:
-                return self._get(
-                    "BRIDGES", endpoint=f"/bridgedaystats/{timestamp}/{chains[0]}"
-                )
-
-            results = {}
-            for chain in chains:
-                results[chain] = self._get(
-                    "BRIDGES", endpoint=f"/bridgedaystats/{timestamp}/{chains}"
-                )
-            return results
-        # doesn't work for multiple chains
 
     def get_bridge_day_stats(
         self,
@@ -641,6 +604,52 @@ class Llama:
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
         """
+        if isinstance(chains, str):
+            chains = [chains]
+
+        if raw:
+            results = {}
+            for chain in chains:
+                endpoint = f"/bridgedaystats/{timestamp}/{chain}"
+                results[chain] = self._get("BRIDGES", endpoint=endpoint, params=params)
+            return results
+
+        else:
+            results = []
+            for chain in chains:
+                data = self._get("BRIDGES", endpoint=f"/bridgedaystats/{timestamp}/{chain}", params=params)
+                
+                for token, details in data.get("totalTokensDeposited", {}).items():
+                    details["date"] = data["date"]
+                    details["chain"] = chain
+                    details["token"] = token
+                    details["type"] = "totalTokensDeposited"
+                    results.append(details)
+
+                for token, details in data.get("totalTokensWithdrawn", {}).items():
+                    details["date"] = data["date"]
+                    details["chain"] = chain
+                    details["token"] = token
+                    details["type"] = "totalTokensWithdrawn"
+                    results.append(details)
+                
+                for token, details in data.get("totalAddressDeposited", {}).items():
+                    details["date"] = data["date"]
+                    details["chain"] = chain
+                    details["token"] = token
+                    details["type"] = "totalAddressDeposited"
+                    results.append(details)
+                
+                for token, details in data.get("totalAddressWithdrawn", {}).items():
+                    details["date"] = data["date"]
+                    details["chain"] = chain
+                    details["token"] = token
+                    details["type"] = "totalAddressWithdrawn"
+                    results.append(details)
+
+            df = pd.DataFrame(results)
+            return df
+
 
     def get_bridge_transactions(self, id: int, params: Dict = None, raw: bool = True):
         """Get all transactions for a bridge within a date range.
@@ -665,6 +674,44 @@ class Llama:
         Returns:
         - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
         """
+        if isinstance(id, int):
+            id = [id]
+
+        if raw:
+            if len(id) == 1:
+                return self._get("BRIDGES", endpoint=f"/transactions/{id[0]}", params=params)
+
+            results = {}
+            for bridge_id in id:
+                results[bridge_id] = self._get("BRIDGES", endpoint=f"/transactions/{bridge_id}", params=params)
+            return results
+
+        else:
+            results = []
+
+            for bridge_id in id:
+                transactions = self._get("BRIDGES", endpoint=f"/transactions/{bridge_id}", params=params)
+                
+                for entry in transactions:
+                    results.append(
+                        {
+                            "tx_hash": entry.get("tx_hash"),
+                            "timestamp": entry.get("ts"),
+                            "tx_block": entry.get("tx_block"),
+                            "tx_from": entry.get("tx_from"),
+                            "tx_to": entry.get("tx_to"),
+                            "token": entry.get("token"),
+                            "amount": entry.get("amount"),
+                            "chain": entry.get("chain"),
+                            "bridge_name": entry.get("bridge_name"),
+                            "usd_value": entry.get("usd_value"),
+                            "sourceChain": entry.get("sourceChain")
+                        }
+                    )
+
+            df = pd.DataFrame(results)
+            return df
+
 
     # --- Volumes --- #
 

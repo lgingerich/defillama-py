@@ -75,12 +75,14 @@ obj = Llama()
 #     },
 # )
 
-
+# ttps://bridges.llama.fi/bridgedaystats/1694347200/ethereum?id=5
 # df = obj.get_bridges(params={"includeChains": False}, raw=False)
-# df = obj.get_bridge_transactions(id)
+df = obj.get_chain_bridge_volume('Ethereum', raw=False)
+# df = obj.get_bridge_day_stats(1694347200, ['ethereum'], raw=True)
+# df = obj.get_bridge_transactions([1, 2], raw=False)
 
 # df = obj.get_bridge_volume(["1", "2"], raw=True)
-df = obj.get_chain_bridge_volume(["ethereum", "arbitrum"], raw=False)
+# df = obj.get_chain_bridge_volume(["ethereum", "arbitrum"], raw=False)
 print(df)
 # print(str(df)[:1000])
 # df.to_csv('test.csv')
