@@ -77,7 +77,7 @@ obj = Llama()
 
 # ttps://bridges.llama.fi/bridgedaystats/1694347200/ethereum?id=5
 # df = obj.get_bridges(params={"includeChains": False}, raw=False)
-df = obj.get_chain_bridge_volume('Ethereum', raw=False)
+df = obj.get_chain_bridge_volume("Ethereum", raw=False)
 # df = obj.get_bridge_day_stats(1694347200, ['ethereum'], raw=True)
 # df = obj.get_bridge_transactions([1, 2], raw=False)
 

@@ -407,8 +407,6 @@ class Llama:
 
     # /fetch/signature
     # /fetch/contract/{chain}/{address}
-    
-    
 
     # --- Bridges --- #
 
@@ -436,7 +434,6 @@ class Llama:
             return response
         else:
             return pd.DataFrame(response["bridges"])
-
 
     def get_bridge_volume(
         self, ids: List[str], raw: bool = True
@@ -521,7 +518,6 @@ class Llama:
         else:
             return pd.concat(dfs, ignore_index=True)
 
-
     def get_chain_bridge_volume(
         self, chains: List[str], params: Dict = None, raw: bool = True
     ) -> Union[Dict, pd.DataFrame]:
@@ -581,7 +577,6 @@ class Llama:
             ]
             return self._clean_chain_name(df)
 
-
     def get_bridge_day_stats(
         self,
         timestamp: int,
@@ -618,8 +613,12 @@ class Llama:
         else:
             results = []
             for chain in chains:
-                data = self._get("BRIDGES", endpoint=f"/bridgedaystats/{timestamp}/{chain}", params=params)
-                
+                data = self._get(
+                    "BRIDGES",
+                    endpoint=f"/bridgedaystats/{timestamp}/{chain}",
+                    params=params,
+                )
+
                 for token, details in data.get("totalTokensDeposited", {}).items():
                     details["date"] = data["date"]
                     details["chain"] = chain
@@ -633,14 +632,14 @@ class Llama:
                     details["token"] = token
                     details["type"] = "totalTokensWithdrawn"
                     results.append(details)
-                
+
                 for token, details in data.get("totalAddressDeposited", {}).items():
                     details["date"] = data["date"]
                     details["chain"] = chain
                     details["token"] = token
                     details["type"] = "totalAddressDeposited"
                     results.append(details)
-                
+
                 for token, details in data.get("totalAddressWithdrawn", {}).items():
                     details["date"] = data["date"]
                     details["chain"] = chain
@@ -650,7 +649,6 @@ class Llama:
 
             df = pd.DataFrame(results)
             return df
-
 
     def get_bridge_transactions(self, id: int, params: Dict = None, raw: bool = True):
         """Get all transactions for a bridge within a date range.
@@ -680,19 +678,25 @@ class Llama:
 
         if raw:
             if len(id) == 1:
-                return self._get("BRIDGES", endpoint=f"/transactions/{id[0]}", params=params)
+                return self._get(
+                    "BRIDGES", endpoint=f"/transactions/{id[0]}", params=params
+                )
 
             results = {}
             for bridge_id in id:
-                results[bridge_id] = self._get("BRIDGES", endpoint=f"/transactions/{bridge_id}", params=params)
+                results[bridge_id] = self._get(
+                    "BRIDGES", endpoint=f"/transactions/{bridge_id}", params=params
+                )
             return results
 
         else:
             results = []
 
             for bridge_id in id:
-                transactions = self._get("BRIDGES", endpoint=f"/transactions/{bridge_id}", params=params)
-                
+                transactions = self._get(
+                    "BRIDGES", endpoint=f"/transactions/{bridge_id}", params=params
+                )
+
                 for entry in transactions:
                     results.append(
                         {
@@ -706,13 +710,12 @@ class Llama:
                             "chain": entry.get("chain"),
                             "bridge_name": entry.get("bridge_name"),
                             "usd_value": entry.get("usd_value"),
-                            "sourceChain": entry.get("sourceChain")
+                            "sourceChain": entry.get("sourceChain"),
                         }
                     )
 
             df = pd.DataFrame(results)
             return df
-
 
     # --- Volumes --- #
 
