@@ -75,9 +75,24 @@ obj = Llama()
 #     },
 # )
 
-# ttps://bridges.llama.fi/bridgedaystats/1694347200/ethereum?id=5
+
+df = obj.get_abi(
+    params={
+        "functions": [
+            "0xf43f523a",
+            "0x95d89b41",
+            "0x95d89b41",
+            "0x70a08231",
+            "0x70a08231",
+        ]
+    }
+)
+# df = obj.get_abi_by_contract('ethereum', '0x02f7bd798e765369a9d204e9095b2a526ef01667',
+# params={"functions": ['0xf43f523a','0x95d89b41','0x95d89b41','0x70a08231',
+# '0x70a08231']}, raw=True)
+
 # df = obj.get_bridges(params={"includeChains": False}, raw=False)
-df = obj.get_chain_bridge_volume("Ethereum", raw=False)
+# df = obj.get_chain_bridge_volume("Ethereum", raw=False)
 # df = obj.get_bridge_day_stats(1694347200, ['ethereum'], raw=True)
 # df = obj.get_bridge_transactions([1, 2], raw=False)
 

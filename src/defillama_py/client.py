@@ -23,7 +23,7 @@ called in the function definition.
 """
 import requests
 import pandas as pd
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Optional
 
 TVL_URL = VOLUMES_URL = FEES_URL = "https://api.llama.fi"
 COINS_URL = "https://coins.llama.fi"
@@ -88,9 +88,8 @@ class Llama:
         return df
 
     # --- Mappings --- #
-    """
-    Helper functions to get full lists of all chains, protocols, stablecoins, and pools
-      tracked by DefiLlama.
+    """Helper functions to get full lists of all chains, protocols, stablecoins, and 
+    pools tracked by DefiLlama.
     Used to map general names with unique identifiers such as chain IDs and protocol
     slugs.
     Returns minimum information necessary to uniquely identify objects.
@@ -404,14 +403,93 @@ class Llama:
     # /chart/{pool}
 
     # --- ABI Decoder --- #
+    # haven't implemented for raw=False
 
-    # /fetch/signature
-    # /fetch/contract/{chain}/{address}
+    def get_abi(
+        self,
+        params: Optional[Dict[str, Union[str, List[str]]]] = None,
+        raw: bool = True,
+    ) -> Union[Dict, pd.DataFrame]:
+        """
+        Fetch the detailed information for a function or event signature.
+
+        Endpoint: /fetch/signature
+
+        Parameters:
+        - params (Dict, optional):  Dictionary containing optional API parameters.
+            - functions (str or List[str], optional): A list or comma-separated string
+            of 4-byte function signatures.
+            - events (str or List[str], optional): A list or comma-separated string of
+            event signatures.
+        - raw (bool, optional): If True, returns raw data. If False, returns a
+        transformed DataFrame. Defaults to True.
+
+        Returns:
+        - Dict or DataFrame: Raw data from the API or a transformed DataFrame.
+        """
+        if params:
+            for key in ["functions", "events"]:
+                if key in params and isinstance(params[key], list):
+                    params[key] = ",".join(params[key])
+
+        data = self._get("ABI", endpoint="/fetch/signature", params=params)
+
+        if raw:
+            return data
+
+    def get_abi_by_contract(
+        self, chain: str, address: str, params: Optional[Dict] = None, raw: bool = True
+    ) -> Union[Dict, pd.DataFrame]:
+        """Get the verbose ABI for a function or event signature for a particular 
+        contract.
+
+        Endpoint: /fetch/contract/{chain}/{address}
+
+        Parameters:
+        - chain (str, required): Chain the smart contract is located in.
+        - address (str, required): Address of the smart contract.
+        - params (Dict, optional):  Dictionary containing optional API parameters.
+            - functions (str or List[str], optional): A list or comma-separated string 
+            of 4-byte function signatures.
+            - events (str or List[str], optional): A list or comma-separated string of 
+            event signatures.
+        - raw (bool, optional): If True, returns raw data. If False, returns a 
+        transformed DataFrame. Defaults to True.
+
+        Returns:
+        - Dict or DataFrame: Raw data from the API or a transformed DataFrame.\
+        """
+        if params:
+            for key in ["functions", "events"]:
+                if key in params and isinstance(params[key], list):
+                    params[key] = ",".join(params[key])
+
+        data = self._get(
+            "ABI", endpoint=f"/fetch/contract/{chain}/{address}", params=params
+        )
+
+        if raw:
+            return data
+        # else:
+        #     results = []
+
+        #     for entry in data:
+        #         results.append(
+        #             {
+        #                 "chain": chain,
+        #                 "address": address,
+        #                 "function": entry.get("function"),
+        #                 "event": entry.get("event")
+        #             }
+        #         )
+
+        #     df = pd.DataFrame(results)
+        #     return df
 
     # --- Bridges --- #
 
     def get_all_bridge_volume(
-        self, params: Dict = None, raw: bool = True
+        self, params: Optional[Dict] = None, raw: bool = True
     ) -> Union[Dict, pd.DataFrame]:
         """Get bridge data with summaries of recent bridge volumes.
 
@@ -519,7 +597,7 @@ class Llama:
             return pd.concat(dfs, ignore_index=True)
 
     def get_chain_bridge_volume(
-        self, chains: List[str], params: Dict = None, raw: bool = True
+        self, chains: List[str], params: Optional[Dict] = None, raw: bool = True
     ) -> Union[Dict, pd.DataFrame]:
         """Get historical volumes for a bridge, chain, or bridge on a particular chain.
 
@@ -581,7 +659,7 @@ class Llama:
         self,
         timestamp: int,
         chains: Union[str, List[str]],
-        params: Dict = None,
+        params: Optional[Dict] = None,
         raw: bool = True,
     ):
         """Get a 24hr token and address volume breakdown for a bridge.
@@ -650,7 +728,9 @@ class Llama:
             df = pd.DataFrame(results)
             return df
 
-    def get_bridge_transactions(self, id: int, params: Dict = None, raw: bool = True):
+    def get_bridge_transactions(
+        self, id: int, params: Optional[Dict] = None, raw: bool = True
+    ):
         """Get all transactions for a bridge within a date range.
 
         Endpoint: /transactions/{id}
@@ -719,7 +799,7 @@ class Llama:
 
     # --- Volumes --- #
 
-    def get_dex_volume(self, params: Dict = None, raw: bool = True):
+    def get_dex_volume(self, params: Optional[Dict] = None, raw: bool = True):
         """Get all dexs along wtih summaries of their volumes and dataType history data.
 
         Endpoint: /overview/dexs
@@ -774,7 +854,10 @@ class Llama:
                 )
 
     def get_chain_dex_volume(
-        self, chains: Union[str, List[str]], params: Dict = None, raw: bool = True
+        self,
+        chains: Union[str, List[str]],
+        params: Optional[Dict] = None,
+        raw: bool = True,
     ):
         """Get all dexs along with summaries of their volumes and dataType history data
         filtering by chain.
@@ -859,7 +942,10 @@ class Llama:
             return pd.concat(dfs, ignore_index=True)
 
     def get_protocol_dex_volume(
-        self, protocols: Union[str, List[str]], params: Dict = None, raw: bool = True
+        self,
+        protocols: Union[str, List[str]],
+        params: Optional[Dict] = None,
+        raw: bool = True,
     ) -> Union[List[Dict], pd.DataFrame]:
         """Get summary of protocol dex volume with historical data.
 
@@ -946,7 +1032,7 @@ class Llama:
 
             return pd.DataFrame(all_data)
 
-    def get_perps_volume(self, params: Dict = None, raw: bool = True):
+    def get_perps_volume(self, params: Optional[Dict] = None, raw: bool = True):
         """Get all perps dexs along wtih summaries of their volumes and dataType history
         data.
 
@@ -1002,7 +1088,10 @@ class Llama:
                 )
 
     def get_chain_perps_volume(
-        self, chains: Union[str, List[str]], params: Dict = None, raw: bool = True
+        self,
+        chains: Union[str, List[str]],
+        params: Optional[Dict] = None,
+        raw: bool = True,
     ):
         """Get all perps dexs along with summaries of their volumes and dataType history
         data filtering by chain.
@@ -1089,7 +1178,10 @@ class Llama:
             return pd.concat(dfs, ignore_index=True)
 
     def get_protocol_perps_volume(
-        self, protocols: Union[str, List[str]], params: Dict = None, raw: bool = True
+        self,
+        protocols: Union[str, List[str]],
+        params: Optional[Dict] = None,
+        raw: bool = True,
     ) -> Union[List[Dict], pd.DataFrame]:
         """Get summary of protocol perps dex volume with historical data.
 
@@ -1178,7 +1270,7 @@ class Llama:
 
             return pd.DataFrame(all_data)
 
-    def get_options_volume(self, params: Dict = None, raw: bool = True):
+    def get_options_volume(self, params: Optional[Dict] = None, raw: bool = True):
         """Get all options dexs along wtih summaries of their volumes and dataType
         history data.
 
@@ -1235,7 +1327,10 @@ class Llama:
                 )
 
     def get_chain_options_volume(
-        self, chains: Union[str, List[str]], params: Dict = None, raw: bool = True
+        self,
+        chains: Union[str, List[str]],
+        params: Optional[Dict] = None,
+        raw: bool = True,
     ):
         """Get all options dexs along with summaries of their volumes and dataType
         history data filtering by chain.
@@ -1321,7 +1416,10 @@ class Llama:
             return pd.concat(dfs, ignore_index=True)
 
     def get_protocol_options_volume(
-        self, protocols: Union[str, List[str]], params: Dict = None, raw: bool = True
+        self,
+        protocols: Union[str, List[str]],
+        params: Optional[Dict] = None,
+        raw: bool = True,
     ) -> Union[List[Dict], pd.DataFrame]:
         """Get summary of protocol options dex volume with historical data.
 
@@ -1409,7 +1507,7 @@ class Llama:
     # --- Fees --- #
 
     def get_fees_revenue(
-        self, params: Dict = None, raw: bool = True
+        self, params: Optional[Dict] = None, raw: bool = True
     ) -> Union[List[Dict], pd.DataFrame]:
         """Get all protocols along with summaries of their fees and revenue and dataType
         history data.
@@ -1475,7 +1573,10 @@ class Llama:
                 )
 
     def get_chain_fees_revenue(
-        self, chains: Union[str, List[str]], params: Dict = None, raw: bool = True
+        self,
+        chains: Union[str, List[str]],
+        params: Optional[Dict] = None,
+        raw: bool = True,
     ) -> Union[List[Dict], pd.DataFrame]:
         """Get all protocols along with summaries of their fees and revenue and dataType
         history data by chain.
@@ -1568,7 +1669,10 @@ class Llama:
             return pd.concat(dfs, ignore_index=True)
 
     def get_protocol_fees_revenue(
-        self, protocols: Union[str, List[str]], params: Dict = None, raw: bool = True
+        self,
+        protocols: Union[str, List[str]],
+        params: Optional[Dict] = None,
+        raw: bool = True,
     ) -> Union[List[Dict], pd.DataFrame]:
         """Get summary of protocol fees and revenue with historical data.
 
